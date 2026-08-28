@@ -1,0 +1,37 @@
+# Bu dosya, PORT EDİLMİŞ kurum chart'ı için hedef values sözleşmesidir.
+# Bu repository'deki mevcut Bitnami chart'ına uygulanırsa Helm render eder fakat
+# runtime'da prepare-config Bitnami script/path bağı nedeniyle çalışmaz.
+
+image:
+  registry: __INTERNAL_REGISTRY__
+  repository: platform/kafka
+  # SemVer tag yerine release pipeline'ın onayladığı digest kullanılmalıdır.
+  tag: 4.0.0
+  digest: "sha256:REPLACE_WITH_APPROVED_MULTIPLATFORM_DIGEST"
+  pullPolicy: IfNotPresent
+
+defaultInitContainers:
+  volumePermissions:
+    image:
+      registry: __INTERNAL_REGISTRY__
+      repository: platform/shell
+      tag: approved
+      digest: "sha256:REPLACE_WITH_APPROVED_MULTIPLATFORM_DIGEST"
+  autoDiscovery:
+    image:
+      registry: __INTERNAL_REGISTRY__
+      repository: platform/kubectl-shell
+      tag: v1.33.4
+      digest: "sha256:REPLACE_WITH_APPROVED_MULTIPLATFORM_DIGEST"
+
+metrics:
+  jmx:
+    enabled: false # Port edilmiş JMX command/image doğrulanana kadar kapalı tutun.
+    image:
+      registry: __INTERNAL_REGISTRY__
+      repository: platform/jmx-exporter
+      tag: approved
+      digest: "sha256:REPLACE_WITH_APPROVED_MULTIPLATFORM_DIGEST"
+
+provisioning:
+  enabled: false # provisioning/job.yaml port edilip test edilene kadar kapalı tutun.

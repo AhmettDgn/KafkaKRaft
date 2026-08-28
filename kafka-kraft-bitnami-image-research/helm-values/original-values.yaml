@@ -1,0 +1,24 @@
+# Mevcut chart'ın ilgili Bitnami image değerleri (referans amaçlıdır).
+image:
+  registry: __ECR_REGISTRY__
+  repository: __ECR_PREFIX__/kafka
+  tag: 4.0.0-debian-12-r10
+
+defaultInitContainers:
+  volumePermissions:
+    image:
+      registry: __ECR_REGISTRY__
+      repository: __ECR_PREFIX__/os-shell
+      tag: 12-debian-12-r51
+  autoDiscovery:
+    image:
+      registry: __ECR_REGISTRY__
+      repository: __ECR_PREFIX__/kubectl
+      tag: 1.33.4-debian-12-r0
+
+metrics:
+  jmx:
+    image:
+      registry: __ECR_REGISTRY__
+      repository: __ECR_PREFIX__/jmx-exporter
+      tag: 1.4.0-debian-12-r0

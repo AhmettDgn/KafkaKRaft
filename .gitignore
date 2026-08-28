@@ -1,0 +1,9 @@
+# Contabo host configuration and production values must never be committed.
+deploy/contabo/deploy.env
+deploy/contabo/values-production.yaml
+*.key
+*.pem
+
+# Local Helm artifacts
+charts/*.tgz.tmp
+*.tgz.tmp

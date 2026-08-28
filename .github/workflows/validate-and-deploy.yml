@@ -1,0 +1,59 @@
+name: Validate and deploy Kafka chart
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contabo-production
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Helm validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+      - name: Build locked chart dependencies
+        run: helm dependency build .
+      - name: Lint chart
+        run: helm lint . -f values-template.yaml
+      - name: Render chart
+        run: helm template kafka . -f values-template.yaml > /tmp/kafka-render.yaml
+
+  deploy:
+    name: Contabo deployment
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: contabo-production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure SSH identity and known hosts
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.CONTABO_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.CONTABO_KNOWN_HOSTS }}
+        run: |
+          install -d -m 0700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 0600 ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 0600 ~/.ssh/known_hosts
+      - name: Deploy approved commit over SSH
+        env:
+          CONTABO_HOST: ${{ secrets.CONTABO_HOST }}
+          CONTABO_PORT: ${{ secrets.CONTABO_PORT }}
+          CONTABO_USER: ${{ secrets.CONTABO_USER }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -p "$CONTABO_PORT" \
+            -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "$CONTABO_USER@$CONTABO_HOST" \
+            "bash -s -- '${GITHUB_SHA}' '${GITHUB_REPOSITORY}' '${GITHUB_REF_NAME}'" \
+            < scripts/contabo/deploy.sh
