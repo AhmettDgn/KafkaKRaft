@@ -144,3 +144,11 @@ Testler önce küçük grup (7 storage testi), sonra fake API/snapshot akışı 
 - Kullanıcıdan gereken sonraki güvenli çıktı: `bash scripts/lab/storage-audit.sh --inspect` (üç broker). Eski layout için FAIL beklenir; bu bir güvenlik engelidir.
 - Snapshot/yedek olanağı, korunacak veriler ve bakım aralığı doğrulanmadan veri taşıma/replacement yapılmayacak. PVC/Secret silmek, raw helm rollback, toplu restart veya containerd cleanup önerilmedi.
 - Sunucuda bu tur hiçbir komut çalıştırılmadı. Sunucu kanıtları kullanıcı tarafından paylaşılmıştır; yeni fixture'lar sentetik/mock kanıttır, gerçek mount testi değildir.
+
+### Düzeltme commit/push kanıtı
+
+- Commit: `92b8d6bb08e9972f171125d7f1546e6d85726d07` — `Fix Kafka PVC shadow mounts and gate legacy storage upgrades` (19 dosya).
+- `git push origin main`: başarılı, `0747716..92b8d6b main -> main`. `git ls-remote origin refs/heads/main` tam SHA ile eşleşti.
+- `storage-audit.sh` Git executable mode `100755`; Python dosyası interpreter ile çalıştırılır. Staged diff whitespace denetimi geçti; eski root Chart/lock/templates/values için diff yok.
+- Staged dosyalar private-key başlığı ve yaygın GitHub/AWS token kalıplarıyla, yalnız dosya adları gösterecek şekilde tarandı: eşleşme yok. Tam secret/security scan yerine geçmez. Test tool/paket/render çıktıları ignored artifacts dizininde kaldı.
+- Bu son sonuç kaydı ayrı dokümantasyon commit'idir; kendi SHA'sı Git history'den okunur. GitHub otomasyonu hâlâ yoktur; push sunucuda dağıtım veya veri taşıma çalıştırmadı.
