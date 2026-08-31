@@ -13,8 +13,8 @@ Roadmap Gün 1 için komut çıktısını da kabul eder; [repo ağacı ve komut]
 | 03-quorum-topic.png | Quorum ve topic describe / replication / ISR | Eksik |
 | 04-producer-consumer.png | Mesaj gönderme/okuma sonucu | Eksik |
 | 05-restart-failure-audit.png | Gerçek eski restart FAIL ve/veya mevcut read-only audit çıktısı | Eksik |
-| 06-fixed-restart.png | İleride 0.2.0 için başarılı kalıcılık kabulü | Henüz test edilmedi; başarı görseli üretilemez |
+| 06-fixed-restart.png | 0.2.0 başarılı kalıcılık kabulü | Test geçti; gerçek ekran görüntüsü eksik |
 
 Her gerçek görüntü için tarih/saat, komut, source SHA, chart sürümü ve sonucun eski/yeni kuruluma ait olduğunu yazın. Password/token/private key/kubeconfig içeriği gösterilmemeli. Maskelenmiş alanları “maskelendi” diye not edin; test sonucunu değiştirmeyin.
 
-Sırf ekran görüntüsü almak için eski pod'ları restart etmeyin veya veri silmeyin. Mevcut terminal geçmişinin gerçek görüntüsü kullanılabilir; geçmiş mevcut değilse eski başarılı çıktıları yeniden üretilmiş gibi göstermeyin. Yeni test için önce güvenli ortam ve veri koruma kararı gerekir.
+Sırf ekran görüntüsü almak için tekrar pod restart etmeyin veya veri silmeyin. Mevcut başarılı 0.2.0 terminal geçmişinin gerçek görüntüsü kullanılabilir; geçmiş mevcut değilse eski çıktı yeniden çalıştırılmış gibi gösterilmemeli. Salt-okunur güncel durum için `kubectl get pods,pvc,sts,svc -n kafka-lab` ve `bash scripts/lab/storage-audit.sh` kullanılabilir.

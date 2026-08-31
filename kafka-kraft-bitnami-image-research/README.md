@@ -8,7 +8,7 @@ Madde bazında teslim durumu: [ROADMAP-COMPLIANCE.md](../ROADMAP-COMPLIANCE.md).
 
 Apache Kafka image'ı ile Bitnami'den bağımsız KRaft demo kurulabilir; yalnız image repository/tag değiştirmek mevcut chart'ın Bitnami script/entrypoint/path bağımlılıklarını kaldırmaz. Bu nedenle kökteki orijinal chart korundu, [lab/kafka-apache](../lab/kafka-apache) bağımsız chart'ı geliştirildi. Seçim Apache Kafka 4.0.2'nin digest ile sabitlenmiş ASF image'ıdır; kurum image'ı henüz build edilmedi.
 
-Sunucudaki 0.1.0 denemesinde deploy, quorum, topic, producer/consumer ve partition artırma geçti. Restart testi başarısız oldu: image VOLUME alt mount'u PVC'yi örttüğü için pod verisi gerçek PVC'de değildi. Bu, yalnız render/Running kontrolünün yeterli olmadığını gösteren somut bulgudur. Düzeltme 0.2.0 kodunda var, offline testleri geçti; yeni sürümün canlı kalıcılık testi henüz yapılmadı.
+Sunucudaki 0.1.0 denemesinde deploy ve mesajlaşma geçti; restart ise image VOLUME alt mount'u PVC'yi örttüğü için başarısız oldu. Kullanıcının eski test verilerini silme onayından sonra temiz 0.2.0 deploy edildi: üç yeni PVC doğrudan `/var/lib/kafka/data` yolunda. Pod 0 replacement sonrasında üç PVC/PV kaynağı ve Kafka kimlikleri değişmedi; eski üç mesaj okundu ve yeni dördüncü mesaj yazılıp okundu. 0.2.0 kalıcılık kabulü geçti.
 
 ## Teslim dosyaları
 
@@ -35,11 +35,11 @@ Values dosyaları birbirinin yerine kullanılmaz: image-only-override kökteki B
 ## Sonuçların sınırları
 
 - Gerçek sunucu kanıtı kullanıcı tarafından paylaşılan terminal çıktılarıdır; bu çalışma ortamından SSH ile doğrulama yapılmadı.
-- Mevcut sunucuda üç broker'ın da eski tehlikeli mount düzeninde olduğu --inspect ile teyit edildi. Kaynak pull işlemi çalışan release'i güncellemez.
-- Roadmap, başarısız denemenin teknik açıklamasını ve uygulanabilir sonraki adımı kabul eder. Kalıcılık testi PASS olarak sunulamaz.
+- Eski 0.1.0'daki üç broker'ın tehlikeli mount düzeni teyit edildi; bu test verileri açık onayla sıfırlandı. Yeni 0.2.0 exact PVC mount audit'i geçti.
+- Roadmap, eski başarısız denemenin teknik açıklamasını korur; 0.2.0 restart kalıcılığı gerçek sunucuda PASS olmuştur.
 - amd64/arm64 manifest kontrolü çalışma testi değildir. İki mimaride canlı test, CVE scanner, SBOM/imza doğrulaması yapılmadı.
 - Gerçek ekran görüntüleri henüz sağlanmadı; terminal metni ekran görüntüsü gibi etiketlenmedi.
 - GitHub otomasyonu yoktur. Üç pod tek fiziksel sunucudadır; production HA, TLS/SASL, JMX ve dış erişim kapsam dışıdır.
-- Eski verilerin korunması/silinmesi kararı verilmeden upgrade, restart, PVC silme veya veri taşıma yapılmamalı. [Güvenli geçiş koşulları](../deploy/contabo/STORAGE-RECOVERY.md).
+- Eski veriler taşınmadı; kullanıcı disposable test verilerinin silinmesini onayladı. Fiziksel secure erase veya geri yükleme garantisi verilmedi. [Geçiş kaydı](../IMPLEMENTATION-REPORT.md).
 
-Sonraki teknik adım: veri koruma kararı ve uygun yedek/ayrı test ortamı onayı ardından 0.2.0'ı canlı doğrulamak; exact PVC mount, sabit cluster/node/directory kimlikleri, restart sonrası eski mesaj okuma ve yeni mesaj yazma kanıtını eklemek.
+Teknik demo hedefi tamamlandı. Kalan teslim kalemi gerçek ekran görüntüleridir. Production için TLS/SASL, dış erişim, JMX, zafiyet/SBOM/imza, yük/uzun süre ve fiziksel host arızası testleri ayrı kapsamdır.

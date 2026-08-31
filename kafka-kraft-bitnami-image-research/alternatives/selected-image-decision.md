@@ -20,18 +20,18 @@ Demo için `docker.io/apache/kafka:4.0.2@sha256:836cafdad9f4825880d7cf1d5a212029
 | Eski chart'a image-only override | Lint/render deneyi; Bitnami init/path bağları kaldığı için runtime uygun değil. Canlıya uygulanmadı |
 | Bağımsız chart 0.1.0, kaynak 0747716 | Gerçek deploy, quorum ve mesaj testi başarılı (kullanıcı logları) |
 | 0.1.0 restart kalıcılığı | **Başarısız**; containerd image child volume PVC'yi örttü, yeni pod format attı |
-| Bağımsız chart 0.2.0 düzeltmesi | Kod ve offline testler hazır; gerçek sunucu düzeltme/deploy/restart testi bekliyor |
+| Bağımsız chart 0.2.0 düzeltmesi | Gerçek temiz deploy, exact PVC/metadata audit, mesajlaşma ve pod replacement kalıcılık testi başarılı |
 | CVE/SBOM/imza güvenlik onayı | Verilmedi; değerlendirme ve kabul planı var |
 | Production migration | Yapılmadı; ayrı kapsam |
 
 ## Haftanın sorusuna cevap
 
-**Bitnami'den bağımsız KRaft demo uygulanabilir; yalnız values değişikliği yeterli değildir.** Apache image + bağımsız chart yaklaşımı deploy/mesaj seviyesinde gösterildi. Tam kalıcılık kabulü henüz sağlanmadı; bulunan çakışma ve uygulanabilir düzeltme [denetim raporunda](../../CHART-AUDIT.md) belgeli.
+**Bitnami'den bağımsız KRaft demo uygulanabilir; yalnız values değişikliği yeterli değildir.** Apache image + bağımsız chart yaklaşımı gerçek deploy, mesaj ve pod replacement sonrası kalıcılık seviyesinde gösterildi. Eski çakışma ve doğrulanmış düzeltme [denetim raporunda](../../CHART-AUDIT.md) belgeli.
 
 Roadmap, başarısız deploy/test alanlarının teknik sebebi ve sonraki adımı açıklandığında bunu geçerli araştırma çıktısı sayıyor. Bu koşul, başarısız restart'ı PASS yazmayı veya production hazır ilan etmeyi gerektirmez.
 
 ## Sonraki adım ve sınırlar
 
-Önce mevcut verinin korunma gereksinimi kullanıcıyla netleştirilmeli; silme onayı yok. [Kontrollü storage recovery](../../deploy/contabo/STORAGE-RECOVERY.md) veya ayrıca onaylanmış disposable lab yeniden kurulumu sonrasında 0.2.0 gerçek mount/kimlik/restart testi yapılmalı.
+Eski veriler, kullanıcı tarafından disposable olduğu açıkça onaylandıktan sonra kontrollü temiz kurulumla sıfırlandı; veri taşıması yapılmadı. 0.2.0 mount/kimlik/restart testi tamamlandı. Gelecekte gerçek veri taşıması gerekiyorsa [kontrollü storage recovery](../../deploy/contabo/STORAGE-RECOVERY.md) şartları yeniden geçerlidir.
 
 TLS/SASL/JMX/dış erişim ve production taşıması haftalık demo kapsamı dışında. GitHub otomasyonu kullanıcı isteğiyle yok. Sürüm/digest güncellemeleri CVE değerlendirmesi ve tekrar test gerektirir; 4.0.2'nin en güncel/ömür boyu güvenli sürüm olduğu iddia edilmez.

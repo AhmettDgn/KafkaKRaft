@@ -2,7 +2,7 @@
 
 ## Sonuç
 
-0.1.0 chart'ta **kritik veri kalıcılığı hatası** doğrulandı. PVC parent mount'u, Apache image-defined child volume tarafından örtülüyordu. 0.2.0 düzeltmesi ve fail-closed kontrolleri yazıldı. Eski canlı cluster'a otomatik upgrade **engellendi**. Düzeltmenin canlı ortamda çalıştığı henüz doğrulanmadı; offline PASS, veri taşındı veya production hazır anlamına gelmez.
+0.1.0 chart'ta **kritik veri kalıcılığı hatası** doğrulandı. PVC parent mount'u, Apache image-defined child volume tarafından örtülüyordu. 0.2.0 düzeltmesi ve fail-closed kontrolleri yazıldı. Eski canlı cluster'a otomatik upgrade **engellendi**. Kullanıcının eski test verilerini silme onayıyla temiz 0.2.0 kuruldu; exact PVC/metadata audit ve pod replacement sonrası eski/yeni mesaj kalıcılığı gerçek sunucuda geçti. Bu production hazır anlamına gelmez.
 
 Bu denetim yeni `lab/kafka-apache` chart'ının bütün template/helper/values/startup dosyalarını, deploy/bootstrap/smoke scriptlerini, namespace RBAC'ını ve kökteki eski chart ile birlikte bulunma durumunu kapsar. Eski Bitnami chart yeniden geliştirilmedi; onun tüm production özelliklerine güvenlik sertifikasyonu yapılmadı.
 
@@ -10,7 +10,7 @@ Bu denetim yeni `lab/kafka-apache` chart'ının bütün template/helper/values/s
 
 | ID / önem | Bulgu ve etki | Düzeltme / durum |
 | --- | --- | --- |
-| S01 Kritik | PVC `/var/lib/kafka`, image VOLUME `/var/lib/kafka/data`; Kafka container-local diske yazıyor. Pod yenilenince format ve directory ID değişimi. | PVC exact `/var/lib/kafka/data`, log alt dizini `kraft`; chart 0.2.0. Sunucu geçişi bekliyor. |
+| S01 Kritik | PVC `/var/lib/kafka`, image VOLUME `/var/lib/kafka/data`; Kafka container-local diske yazıyor. Pod yenilenince format ve directory ID değişimi. | PVC exact `/var/lib/kafka/data`, log alt dizini `kraft`; chart 0.2.0. Temiz deploy ve pod replacement kalıcılık testi geçti. |
 | S02 Yüksek | İmajın `/etc/kafka/secrets` ve `/mnt/shared/config` volume'ları da örtük containerd diskleri oluşturuyor; readOnlyRootFilesystem tek başına bunları engellemiyor. | İkisi açık readonly emptyDir. Bu chart'ta kullanılmıyorlar; entrypoint bypass ediliyor. |
 | S03 Kritik | Sadece mountPath değiştiren upgrade canlı pod'ları yeni boş dizine döndürebilir; PVC Bound yanıltıcı. | Helm lookup legacy layout'u reddeder; deploy scripti mutation öncesi runtime/PVC audit çalıştırır. Veri taşıma otomatik değil. |
 | S04 Yüksek | İlk startup testi gerçek image-volume davranışını modellemiyordu. | Image digest/volume sözleşmesi fixture'ı, ancestor mount regresyonu ve gerçek production Helm guard helper testleri eklendi. |

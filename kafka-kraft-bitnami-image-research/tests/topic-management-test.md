@@ -24,9 +24,23 @@ Result: PASS
 
 Uzun TopicId değeri çıkarılmış, gerçek çıktının ilgili alanları korunmuştur. Create, describe, replication/ISR ve partition artırma **geçti**.
 
+## 0.2.0 sonucu — 2026-08-31 21:45 UTC
+
+Yeni topic `lab-smoke-20260831214527-8378`, RF=3 ve `min.insync.replicas=2` ile oluşturuldu. İlk partition'ın replikaları 2,0,1 ve ilk ISR 2,0,1 idi. Pod 0 replacement sonrasında ISR 2,1,0 ile yeniden üç üyeye ulaştı; quorum max follower lag 0 idi. Mesaj/kalıcılık doğrulamasından sonra topic 1'den 3 partition'a genişletildi:
+
+```text
+PartitionCount: 3  ReplicationFactor: 3
+Partition: 0  Leader: 2  Replicas: 2,0,1  Isr: 2,1,0
+Partition: 1  Leader: 0  Replicas: 0,1,2  Isr: 0,1,2
+Partition: 2  Leader: 1  Replicas: 1,2,0  Isr: 1,2,0
+Result: PASS
+```
+
+Sonuç: 0.2.0 create/describe, RF/minISR/full ISR ve partition artırma **GEÇTİ**.
+
 ## Çalıştırılmayanlar / sınırlamalar
 
-- Topic silme veya veri reset: **yapılmadı**; kullanıcıdan yetki alınmadı.
+- Yeni test topic'ini silme: **yapılmadı**; kayıtları bir saat retention kullanır, topic nesnesi kalır.
 - Tekrar create idempotency'si, partition azaltma negatif testi ve provisioning Job: ayrıca test edilmedi.
 - Roadmap'teki queue/topic yönetimi Kafka topic create/describe/partition yönetimiyle karşılanır; ayrı bir queue ürünü kurulduğu iddia edilmez.
-- 0.2.0 canlı topic testi: bekliyor. Eski kurulumda storage sorunu olduğundan yeni mutation testleri öncesinde recovery kararı gerekir.
+- Eski 0.1.0 test verileri açık kullanıcı onayıyla sıfırlandı; bu, yeni 0.2.0 test topic'ini otomatik silme yetkisi olarak genişletilmedi.
