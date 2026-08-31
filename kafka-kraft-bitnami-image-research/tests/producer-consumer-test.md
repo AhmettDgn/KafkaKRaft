@@ -1,33 +1,35 @@
-# Producer ve consumer veri yolu testi
+# Producer / consumer — gerçek sonuçlar
 
-## Durum
+## Kanıt ve durum
 
-Çalıştırılmadı. Bu dokümanda örnek mesaj çıktısı PASS kanıtı değildir; gerçek deploy sonrasında aşağıdaki prosedür ve kaydedilmiş çıktı kullanılmalıdır.
+Kullanıcının 2026-08-31 Contabo çıktıları, chart 0.1.0 / kaynak 0747716, Apache Kafka 4.0.2. Ajan sunucuda komut çalıştırmadı.
 
-## Test prosedürü
+`scripts/lab/smoke-test.sh` tek partition ve RF=3 topic'e acks=all ile üç benzersiz mesaj gönderdi; consumer from-beginning/max-messages=3 ile okudu, script beklenen payload ile tam sıralı eşleşmeyi doğruladı.
 
-Önce `orders-stream-v1` topic'inin üç partition ve uygun replication factor ile var olduğunu doğrulayın. Ardından geçici producer/consumer pod'larında **aynı onaylanmış kurum Kafka imajını** kullanın:
-
-```bash
-kubectl run kafka-producer -n kafka --rm -i --restart=Never \
-  --image=registry.example.invalid/platform/kafka@sha256:APPROVED_DIGEST -- \
-  /opt/kafka/bin/kafka-console-producer.sh \
-  --bootstrap-server kafka-kraft:9092 --topic orders-stream-v1
-
-kubectl run kafka-consumer -n kafka --rm -i --restart=Never \
-  --image=registry.example.invalid/platform/kafka@sha256:APPROVED_DIGEST -- \
-  /opt/kafka/bin/kafka-console-consumer.sh \
-  --bootstrap-server kafka-kraft:9092 --topic orders-stream-v1 \
-  --from-beginning --group bitnami-exit-e2e
+```text
+Created topic lab-smoke-20260831105749-15898.
+Processed a total of 3 messages
+PASS: topic creation and exact ordered payload match
+Result: PASS; test topic retained: lab-smoke-20260831105749-15898
 ```
 
-## Kabul kriterleri
+Restart testinin kullandığı ikinci topic'e sonradan yapılan doğrudan okumada:
 
-1. Producer'a gönderilen benzersiz en az üç mesaj consumer tarafından aynı sırayla alınır (partition anahtarına göre beklenen sıralama tanımlanmalıdır).
-2. Consumer group offset'i commit edilir ve lag, consumer tamamlandıktan sonra sıfıra iner.
-3. Bir broker/controller restart'ından sonra yeni producer/consumer çalışması başarılı olur.
-4. TLS/SASL etkin ortamda client property dosyası doğru secret mount'undan okunur; düz metin credential loglanmaz.
+```text
+lab-smoke-20260831110541-17177-event-1
+lab-smoke-20260831110541-17177-event-2
+lab-smoke-20260831110541-17177-event-3
+Processed a total of 3 messages
+```
 
-## Kaydedilecek kanıt
+İkinci okuma mevcut mesajların erişilebilir kaldığını kanıtlar; broker 0'ın diskinin korunduğunu kanıtlamaz. Restart testinin bütünü storage kimliği değiştiği için **FAIL** kaldı; yeni mesaj yazma aşamasına ulaşmadı.
 
-Image digest, cluster/chart sürümü, topic yapılandırması, producer girişleri, consumer çıktısı ve `kafka-consumer-groups.sh --describe` çıktısı saklanmalıdır. Credential, broker URL'nin hassas kısmı ve müşteri verisi redakte edilmelidir.
+## Kapsam sınırı
+
+- İlk producer/consumer: **Geçti**.
+- Restart sonrası eski mesajların ayrı komutla okunması: **Geçti**, pod-local persistence kanıtı değil.
+- Düzeltilmiş 0.2.0 üzerinde restart sonrası yeni yazı/okuma: **Çalıştırılmadı**.
+- Consumer group offset commit/lag=0 için bağımsız kanıt: **Yok**. Bu, önceki taslakta ek kabul kriteriydi; roadmap temel producer/consumer testiyle karıştırılmamalı.
+- TLS/SASL client testi: kapsam dışı.
+
+Güncel test scripti unsafe mount'u önce denetler; eski layout'ta topic yaratmadan/pod silmeden durur. Mevcut cluster üzerinde yeni restart denemesi yapılmamalıdır. Mesaj retention'ı bir saattir; topic nesnesi otomatik silinmez.

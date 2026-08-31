@@ -1,37 +1,14 @@
-# Bu dosya, PORT EDİLMİŞ kurum chart'ı için hedef values sözleşmesidir.
-# Bu repository'deki mevcut Bitnami chart'ına uygulanırsa Helm render eder fakat
-# runtime'da prepare-config Bitnami script/path bağı nedeniyle çalışmaz.
-
+# ONLY for lab/kafka-apache (0.2.0+); not an override for the root Bitnami chart.
+# Existing 0.1.0 cluster: normal upgrade is blocked until storage recovery is resolved.
+replicaCount: 3
+existingClusterIdSecret: kafka-lab-cluster-id
+clusterDomain: cluster.local
 image:
-  registry: __INTERNAL_REGISTRY__
-  repository: platform/kafka
-  # SemVer tag yerine release pipeline'ın onayladığı digest kullanılmalıdır.
-  tag: 4.0.0
-  digest: "sha256:REPLACE_WITH_APPROVED_MULTIPLATFORM_DIGEST"
+  repository: docker.io/apache/kafka
+  tag: "4.0.2"
+  digest: sha256:836cafdad9f4825880d7cf1d5a21202915ae2527bd0ef1c3600c526ed7814d1f
   pullPolicy: IfNotPresent
-
-defaultInitContainers:
-  volumePermissions:
-    image:
-      registry: __INTERNAL_REGISTRY__
-      repository: platform/shell
-      tag: approved
-      digest: "sha256:REPLACE_WITH_APPROVED_MULTIPLATFORM_DIGEST"
-  autoDiscovery:
-    image:
-      registry: __INTERNAL_REGISTRY__
-      repository: platform/kubectl-shell
-      tag: v1.33.4
-      digest: "sha256:REPLACE_WITH_APPROVED_MULTIPLATFORM_DIGEST"
-
-metrics:
-  jmx:
-    enabled: false # Port edilmiş JMX command/image doğrulanana kadar kapalı tutun.
-    image:
-      registry: __INTERNAL_REGISTRY__
-      repository: platform/jmx-exporter
-      tag: approved
-      digest: "sha256:REPLACE_WITH_APPROVED_MULTIPLATFORM_DIGEST"
-
-provisioning:
-  enabled: false # provisioning/job.yaml port edilip test edilene kadar kapalı tutun.
+  pullSecrets: []
+storage:
+  storageClass: local-path
+  size: 5Gi

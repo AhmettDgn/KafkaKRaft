@@ -1,46 +1,37 @@
-# ADR-001: Bitnami'den bağımsız Kafka KRaft dağıtımı
+# ADR-001: Apache Kafka image + bağımsız laboratuvar chart'ı
 
-## Durum
+## Güncel karar — 2026-08-31
 
-Kabul edildi: hedef mimari için. Uygulama ve cluster doğrulaması henüz yapılmadı.
+Demo için `docker.io/apache/kafka:4.0.2@sha256:836cafdad9f4825880d7cf1d5a21202915ae2527bd0ef1c3600c526ed7814d1f` seçildi. Gerçek chart `lab/kafka-apache`; sürüm 0.2.0. Kurum registry'sinde custom image build edildiği, tüm Bitnami özelliklerinin port edildiği veya production onayı verildiği iddia edilmiyor.
 
-## Bağlam
+## Gerekçe
 
-Chart 32.4.4, Bitnami container image'larının yanında Bitnami shell API'sine ve Common Helm library chart'ına bağlıdır. Mevcut `non-bitnami-values.yaml` türü bir repository/tag override render edilir, fakat runtime contract'ı değiştirmez.
+- ASF kaynak/yayıncı kimliği ve Kafka çekirdeğinin Apache-2.0 lisansı açık; seçilen digest'in amd64/arm64 manifestleri doğrulandı.
+- Gerçek 0.1.0 Contabo denemesi KRaft quorum, topic, producer/consumer ve partition artırma işlemlerinin çalışabildiğini gösterdi.
+- Eski chart'ın prepare-config init container'ı Bitnami shell API'sine bağlı: yalnız image override yeterli değil. Yerel helper ve config/start scriptleri olan ayrı chart gerekir.
+- Confluent teknik alternatif; ek dağıtım sözleşmesini/dosya yollarını incelemek gerekir. cp-kafka'yı bütün Confluent ürünleriyle aynı lisans kategorisinde varsaymıyoruz.
+- Strimzi/Red Hat operator yaklaşımı ayrı platform kararıdır; mevcut Helm chart'a drop-in replacement değildir.
+- Chainguard supply-chain açısından incelendi fakat bu ortamda registry erişimi doğrulanamadı. Custom build bakım/supply-chain sorumluluğunu kuruma taşır; bu haftanın uygulanmış çıktısı değildir.
 
-## Karar
+## Çalıştı / çalışmadı
 
-Kurum, `apache/kafka:4.0.0` kaynaklı, digest-pinned ve kurum registry'sinde yayınlanan Kafka runtime imajını kullanacaktır. Mevcut chart, kurum tarafından fork edilerek ASF image contract'ına port edilecektir. Port tamamlandığında Bitnami Common library bağımlılığı da yerel helper'lar ile kaldırılacaktır.
-
-Geçişte iki yol vardır:
-
-1. **Hedef yol — chart portu:** Bitnami init/config/provisioning kodu bağımsız script/template'lerle değiştirilir. Yeni Kafka imajı Bitnami scripti içermez.
-2. **Geçici yol — uyumluluk imajı:** Kurum imajı mevcut Bitnami layout ve scriptlerini sunar. Registry/image kaynağını değiştirir ama Bitnami davranış sözleşmesini korur. Bu nedenle zaman sınırı ve kaldırma planı olmayan bir nihai çözüm değildir.
-
-Strimzi/AMQ Streams alternatifi ayrı bir platform kararıdır: mevcut Helm release'i bir operator/CRD tabanlı işletim modeline dönüştürür. Bu çalışma kapsamında drop-in replacement sayılmamıştır.
-
-## Uygulama kabul kriterleri
-
-| Kriter | Kanıt |
+| Aşama | Sonuç |
 | --- | --- |
-| Manifestte Bitnami image yok | `helm template` + image allow-list taraması |
-| Manifestte Bitnami path/script yok | `/opt/bitnami`, `libkafka.sh`, `libos.sh`, `KAFKA_CFG_` taraması; sadece tarihsel yorum istisna olabilir |
-| Helm library bağımsızlığı | `Chart.yaml`/`Chart.lock` içinde Bitnami OCI dependency yok |
-| Multiarch | Her yayınlanmış digest için `linux/amd64` ve `linux/arm64` manifest kanıtı |
-| Supply chain | SBOM, imza/provenance, SCA/CVE raporu, tanımlı CVE eşiği |
-| KRaft | 3 controller quorum, broker join, PVC restart ve rolling update |
-| Veri yolu | Topic create/describe, producer/consumer, consumer group offset, TLS/SASL seçiliyse bunların testi |
+| Eski chart'a image-only override | Lint/render deneyi; Bitnami init/path bağları kaldığı için runtime uygun değil. Canlıya uygulanmadı |
+| Bağımsız chart 0.1.0, kaynak 0747716 | Gerçek deploy, quorum ve mesaj testi başarılı (kullanıcı logları) |
+| 0.1.0 restart kalıcılığı | **Başarısız**; containerd image child volume PVC'yi örttü, yeni pod format attı |
+| Bağımsız chart 0.2.0 düzeltmesi | Kod ve offline testler hazır; gerçek sunucu düzeltme/deploy/restart testi bekliyor |
+| CVE/SBOM/imza güvenlik onayı | Verilmedi; değerlendirme ve kabul planı var |
+| Production migration | Yapılmadı; ayrı kapsam |
 
-## Aşamalı iş planı
+## Haftanın sorusuna cevap
 
-1. Fork oluşturma ve mevcut manifest/test baseline'ı.
-2. Init-config ve StatefulSet config/data/secret path portu; plaintext tek node smoke test.
-3. Üç controller + broker KRaft, persistence ve rolling restart.
-4. TLS/SASL, external access, provisioning ve JMX portu.
-5. Bitnami Common helper'larının kaldırılması, image policy ve CI release gate.
+**Bitnami'den bağımsız KRaft demo uygulanabilir; yalnız values değişikliği yeterli değildir.** Apache image + bağımsız chart yaklaşımı deploy/mesaj seviyesinde gösterildi. Tam kalıcılık kabulü henüz sağlanmadı; bulunan çakışma ve uygulanabilir düzeltme [denetim raporunda](../../CHART-AUDIT.md) belgeli.
 
-## Riskler
+Roadmap, başarısız deploy/test alanlarının teknik sebebi ve sonraki adımı açıklandığında bunu geçerli araştırma çıktısı sayıyor. Bu koşul, başarısız restart'ı PASS yazmayı veya production hazır ilan etmeyi gerektirmez.
 
-- Mevcut PVC'ler Bitnami path'inde `meta.properties` içerir. In-place migration öncesi uyumluluk, yedekleme ve rollback planı gerekir.
-- KRaft controller voter/directory ID değişimi cluster'ı bölüştürebilir. Production'ta yeni cluster + replikasyon/migration daha güvenli olabilir.
-- KRaft ve Kafka binary sürümü sabit tutulmalıdır; aynı değişiklikte hem image dağıtım modeli hem Kafka major upgrade yapılmamalıdır.
+## Sonraki adım ve sınırlar
+
+Önce mevcut verinin korunma gereksinimi kullanıcıyla netleştirilmeli; silme onayı yok. [Kontrollü storage recovery](../../deploy/contabo/STORAGE-RECOVERY.md) veya ayrıca onaylanmış disposable lab yeniden kurulumu sonrasında 0.2.0 gerçek mount/kimlik/restart testi yapılmalı.
+
+TLS/SASL/JMX/dış erişim ve production taşıması haftalık demo kapsamı dışında. GitHub otomasyonu kullanıcı isteğiyle yok. Sürüm/digest güncellemeleri CVE değerlendirmesi ve tekrar test gerektirir; 4.0.2'nin en güncel/ömür boyu güvenli sürüm olduğu iddia edilmez.

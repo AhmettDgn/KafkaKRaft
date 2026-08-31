@@ -17,7 +17,7 @@
 
 ## Bitnami dışı bağımlılık
 
-`Chart.yaml`, `common` bağımlılığını `oci://registry-1.docker.io/bitnamicharts` konumundan ve `2.x.x` sürüm aralığından alır. Bu image bağımlılığı değildir; ancak hedef “Bitnami'den tamamen ayrılmak” ise library chart'ın vendorlama/fork/yerel helper ile değiştirilmesi gerekir. Aksi durumda deploy sırasında Bitnami chart registry'sine tedarik zinciri bağımlılığı devam eder.
+`Chart.yaml`, `common` bağımlılığını `oci://registry-1.docker.io/bitnamicharts` konumundan ve `2.x.x` sürüm aralığından tanımlar; `Chart.lock` 2.31.4'e sabitler. Bu image bağımlılığı değildir. Vendored library zaten repodaysa her render/deploy registry'ye erişmek zorunda değildir; ancak kaynak/güncelleme tedarik zinciri hâlâ Bitnami kökenlidir. Yeni `lab/kafka-apache` library bağımlılığı olmadan yerel helper kullanır; kökteki orijinal chart değiştirilmedi.
 
 ## Mevcut değer katmanı
 

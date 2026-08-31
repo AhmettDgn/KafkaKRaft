@@ -152,3 +152,62 @@ Testler önce küçük grup (7 storage testi), sonra fake API/snapshot akışı 
 - `storage-audit.sh` Git executable mode `100755`; Python dosyası interpreter ile çalıştırılır. Staged diff whitespace denetimi geçti; eski root Chart/lock/templates/values için diff yok.
 - Staged dosyalar private-key başlığı ve yaygın GitHub/AWS token kalıplarıyla, yalnız dosya adları gösterecek şekilde tarandı: eşleşme yok. Tam secret/security scan yerine geçmez. Test tool/paket/render çıktıları ignored artifacts dizininde kaldı.
 - Bu son sonuç kaydı ayrı dokümantasyon commit'idir; kendi SHA'sı Git history'den okunur. GitHub otomasyonu hâlâ yoktur; push sunucuda dağıtım veya veri taşıma çalıştırmadı.
+
+## 2026-08-31 — Staj roadmap gereksinimlerine uyarlama
+
+### Amaç ve kanıt sınırı
+
+Kullanıcının “A Stajyeri 2. Staj - Hafta 1 Roadmap” belgesi tamamen okundu; istenen araştırma, alternatif karşılaştırması, values deneyi, gerçek deploy/test notları ve final demo dosyaları repo ile eşleştirildi. Kullanıcı sunucuda `git pull` ile 0c0c5ce'ye geçtiğini ve `storage-audit.sh --inspect` çıktısında üç pod'un da legacy shadow mount nedeniyle FAIL olduğunu bildirdi. Bu sonuç yeni chart'ın dağıtıldığı anlamına gelmez: son bildirilen çalışan release hâlâ kaynak 0747716 / chart 0.1.0 / Helm revision 1.
+
+Bu tur gerçek Kafka chart template'i veya sunucu konfigürasyonu değiştirilmedi. Eski verinin korunması/silinmesi seçimi cevaplanmadığından herhangi bir recovery, restart, PVC silme veya sunucu deploy komutu çalıştırılmadı. GitHub otomasyonu eklenmedi.
+
+### Anlamlı işlemler ve değiştirilen dosyalar
+
+1. `ROADMAP-COMPLIANCE.md`: Gün 1–5 teslim matrisi, mentor kontrol listesi ve eksikler. Roadmap başarısız denemenin teknik açıklamasını kabul ediyor; ideal başarılı kalıcılık hâlâ bekliyor. Ekran görüntüsü eksikliği nedeniyle yüzde 100 teslim iddiası yok.
+2. `kafka-kraft-bitnami-image-research/README.md`: tarihsel “deploy yapılmadı / custom image hedefi” metni güncel final araştırma girişine dönüştürüldü; eski başarılı 0.1.0 testleri, restart FAIL ve 0.2.0 canlı doğrulama eksikliği ayrıldı.
+3. `chart-analysis/kraft-architecture.md`: ZooKeeper/KRaft, broker/controller, single-host sınırı ve gerçek `git ls-files lab/kafka-apache` komut çıktısı. `image-dependencies.md`: vendored common ile registry kaynağı ayrımı düzeltildi. `bitnami-usage-points.md`: statik beklenen init hatası gerçek çalıştırılmış hata gibi sunulmadı; sınırlı demo kapsamı netleştirildi.
+4. `alternatives/image-comparison.md`, `manifest-evidence.md`, `security-evaluation.md`, `selected-image-decision.md`: beş yayıncı alternatifi + custom + Docker Official Images değerlendirmesi; lisans, güvenilir kaynak, mimari, güncelleme/CVE, KRaft, StatefulSet, command/env/path uyumu. Confluent kafka-images Apache-2.0 lisansı bütün platforma genellenmedi. Red Hat ürün matrisi somut image manifesti sayılmadı.
+5. `helm-values/image-only-override.yaml`: orijinal chart için yalnız offline negatif deney. `non-bitnami-values.yaml`: eski hayalî kurum-image taslağı yerine gerçek bağımsız chart values. `diff-notes.md`: iki deneyin hedefleri ve command/args/env/UID/PVC farklılıkları.
+6. `tests/helm-template-output.md`: iki gerçek render/lint deneyi ve literal bağımlılık sayıları. `deploy-notes.md`, `producer-consumer-test.md`, `topic-management-test.md`: kullanıcının paylaşılmış terminal kanıtları esas alınarak güncellendi; topic create/describe, 1→3 partition, üç mesaj ve başarısız restart ayrı durumlar.
+7. `DEMO-NOTES.md`: yaklaşık altı dakikalık sunum, güvenli offline demo ve yalnız read-only legacy gözlem komutları. `screenshots/README.md`: istenen gerçek ekran görüntüleri ve eksik durumları; sentetik ekran görüntüsü oluşturulmadı.
+8. `tests/test_roadmap.py`: teslim dosyaları/yerel linkler, root negatif image-only deneyi ve gerçek yeni values/PVC/image sözleşmesi için üç test. `scripts/validate.sh` bunları çalıştırır. Root README giriş linkleri ve `.helmignore` rapor dışlaması eklendi. `original-values.yaml` orijinal referans alt kümesi olarak korundu.
+
+### Araştırma komutları ve sonuçlar
+
+| Komut / kaynak kontrolü | Sonuç |
+| --- | --- |
+| `docker buildx imagetools inspect confluentinc/cp-kafka:8.2.0` | GEÇTİ; amd64 ve arm64/v8, index digest ve alt manifestler manifest-evidence.md içinde |
+| `docker buildx imagetools inspect quay.io/strimzi/kafka:0.47.0-kafka-4.0.0` | GEÇTİ; amd64/arm64/ppc64le/s390x; örnek eski tag, en güncel/güvenli iddiası yok |
+| `docker buildx imagetools inspect cgr.dev/chainguard/kafka:latest` | BAŞARISIZ: anonim token 403; yayıncı yetkili organization yolu istiyor. Mimari/digest uydurulmadı |
+| `gh api repos/docker-library/official-images/contents/library` + kafka adı filtresi | Sonuç `[]`; library/kafka girdisi bulunmadı. ASF resmi image, Docker Official Images programından ayrıldı |
+| ASF CVE, Confluent lisans/Docker, Strimzi security, Red Hat ürün matrisi, Chainguard kullanım/provenance sayfaları | Birincil kaynaklar incelendi ve ilgili araştırma belgelerinde URL ile gösterildi. CVE-2026-35554 için 4.0.2 düzeltme örneği, tüm image'ın güvenli olmasıyla eşitlenmedi |
+| Apache image digest/mimarisi | Önceki registry/config doğrulaması yeniden kullanıldı; bu tur image/digest değiştirilmedi |
+
+Registry/ağ erişimi gereken sandbox denemeleri izinli tekrarla yürütüldü; credential içerikleri rapora eklenmedi. Gerçek vulnerability scanner, SBOM üretimi ve signature verification bu tur çalıştırılmadı. Değerlendirme güvenlik onayı değildir.
+
+### Test hatası ve düzeltmesi
+
+Yeni roadmap testinin ilk çalıştırması bir FAIL ve bir ERROR verdi: test, root common helper'ın `tag@digest` render edeceğini ve yeni lab image değerinin ayrı `registry` anahtarı içerdiğini varsaymıştı. Gerçek sözleşme root'ta `repository@digest`, lab'da registry dahil tam `repository` idi. Test beklentileri kaynaktaki iki farklı şemaya göre düzeltildi; chart'a bu nedenle değişiklik yapılmadı. Sonraki üç testin tamamı geçti. İlk assertion çıktısındaki sentetik render/Secret değerleri rapora taşınmadı.
+
+### Son doğrulama durumları
+
+| Test / komut | Sonuç |
+| --- | --- |
+| `helm lint . --strict -f values-template.yaml -f kafka-kraft-bitnami-image-research/helm-values/image-only-override.yaml` | GEÇTİ; yalnız values.yaml yok INFO |
+| Aynı root chart/values ile `helm template` | GEÇTİ; `/opt/bitnami` 4, `libkafka.sh` 1, `KAFKA_CFG_` 1 literal occurrence. Bu beklenen negatif uyumluluk bulgusudur |
+| Yeni lab chart + non-bitnami-values lint/render | GEÇTİ; tam image/digest, 3 replika, exact PVC mount ve 5Gi local-path doğrulandı; yasaklı Bitnami path/env/image eşleşmesi yok |
+| `HELM_BIN=<Helm 3.21.4> PYTHON_BIN=python bash scripts/validate.sh` | GEÇTİ; 6 chart + 10 storage + 3 roadmap = 19 Python testi; 12 mock startup + 4 mock cluster-ID senaryosu; Bash syntax |
+| `shellcheck --external-sources --source-path=SCRIPTDIR scripts/validate.sh` | GEÇTİ; bu tur değişen tek shell dosyası |
+| `git diff --check` | GEÇTİ |
+| Orijinal image-only deneyi canlı deploy | ÇALIŞTIRILMADI; statik uyumsuzluk gösterildi |
+| 0.2.0 canlı deploy/mount/restart/producer-consumer | ÇALIŞTIRILMADI; güvenli geçiş için veri koruma/yedek veya ayrı test ortamı kararı gerekiyor |
+| 0.1.0 canlı testler | Kullanıcı kanıtı: deploy/quorum/topic/mesajlaşma/partition artırma GEÇTİ; restart BAŞARISIZ |
+| Ekran görüntüleri | EKSİK; gerçek terminal metni mevcut, görsel henüz sağlanmadı |
+| CVE scanner / SBOM / signature / çift mimari runtime | ÇALIŞTIRILMADI; manifest kontrolü bunların yerine geçmez |
+
+### Kalan işler ve geri alma
+
+- Kullanıcıdan gerçek deploy/test ekran görüntüleri ve eski verilerin korunma gereksinimi bekleniyor. Gizli credential içeriği talep edilmiyor.
+- Veri geçişi veya ayrı test ortamı onayı ve güvenli erişim sağlanınca 0.2.0'ın exact mount, metadata/PVC kimliği, restart sonrası eski okuma + yeni yazma kabulü yapılmalı. Geçiş kapıları STORAGE-RECOVERY.md içinde; guard devre dışı bırakılmamalı.
+- Bu tur yalnız araştırma/values deney/test/rapor dosyaları değişti; sunucuda geri alınacak işlem yok. Kaynak düzeyinde incelenmiş ters diff/revert kullanılabilir. Önceki 0.2.0 storage koruması kaldırılmamalı; geniş revert ile otomasyon veya eski mount hatası geri getirilmemeli.
+- Commit/push sonucu aşağıdaki takip kaydında tutulacak. Push sunucuda komut çalıştırmaz.

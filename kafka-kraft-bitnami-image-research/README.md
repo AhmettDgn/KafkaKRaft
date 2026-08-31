@@ -1,73 +1,45 @@
-# Kafka KRaft chart'ından Bitnami bağımlılığını kaldırma analizi
+# Kafka KRaft / Bitnami image araştırması — final çalışma dosyaları
 
-> 2026-08-31 güncellemesi: Bu klasör tarihsel analizdir. Artık ayrı [Apache Kafka 4.0.2 laboratuvar chart'ı](../lab/kafka-apache) bulunmaktadır. Güncel kapsam/test durumu [uygulama raporundadır](../IMPLEMENTATION-REPORT.md). Aşağıdaki eski image/fork önerileri yeni kurulum talimatı değildir; analizdeki values dosyaları yeni chart'a verilmemelidir. GitHub otomasyonu kaldırılmıştır.
+Tarih: 2026-08-31. İkinci staj, hafta 1 (genel program hafta 5).
+Repository: [AhmettDgn/KafkaKRaft](https://github.com/AhmettDgn/KafkaKRaft).
+Madde bazında teslim durumu: [ROADMAP-COMPLIANCE.md](../ROADMAP-COMPLIANCE.md).
 
-## Karar özeti
+## Araştırma sorusunun cevabı
 
-Mevcut chart, yalnızca image repository/tag override edilerek `apache/kafka` ile güvenle çalıştırılamaz. `helm template` başarılı olsa da template'ler Bitnami'nin dosya sistemi, bash kütüphaneleri ve `KAFKA_CFG_*` sözleşmesine doğrudan bağlıdır. Bu nedenle **salt values override yaklaşımı reddedilmiştir**.
+Apache Kafka image'ı ile Bitnami'den bağımsız KRaft demo kurulabilir; yalnız image repository/tag değiştirmek mevcut chart'ın Bitnami script/entrypoint/path bağımlılıklarını kaldırmaz. Bu nedenle kökteki orijinal chart korundu, [lab/kafka-apache](../lab/kafka-apache) bağımsız chart'ı geliştirildi. Seçim Apache Kafka 4.0.2'nin digest ile sabitlenmiş ASF image'ıdır; kurum image'ı henüz build edilmedi.
 
-Önerilen hedef mimari, ASF'nin resmi `apache/kafka:4.0.0` imajını kullanan ve bu chart'ın Bitnami'ye bağlı template'lerini port eden kurum içi Helm fork'udur. Bu, hem Bitnami registry/image bağımlılığını hem de Bitnami Common Helm bağımlılığını ortadan kaldıran tek sürdürülebilir yaklaşımdır. Geçişi hızlandırmak için Bitnami scriptlerini taşıyan uyumluluk imajı kurulabilir; ancak bu yalnızca geçici köprüdür, hedef durum değildir.
+Sunucudaki 0.1.0 denemesinde deploy, quorum, topic, producer/consumer ve partition artırma geçti. Restart testi başarısız oldu: image VOLUME alt mount'u PVC'yi örttüğü için pod verisi gerçek PVC'de değildi. Bu, yalnız render/Running kontrolünün yeterli olmadığını gösteren somut bulgudur. Düzeltme 0.2.0 kodunda var, offline testleri geçti; yeni sürümün canlı kalıcılık testi henüz yapılmadı.
 
-Bu çalışma 29 Ağustos 2026 tarihinde incelenmiştir. `apache/kafka:4.0.0` OCI manifesti bu ortamdan doğrudan doğrulanmış ve `linux/amd64` ile `linux/arm64` varyantlarını içermektedir. Apache'nin resmi Docker imajı 3.7.0'dan beri yayınlanmaktadır ve 4.0.0 sürümü Kafka'nın resmi indirme sayfasında yer alır ([Apache Kafka Docker](https://kafka.apache.org/40/getting-started/docker/), [4.0.0 sürümü](https://kafka.apache.org/community/downloads/)).
+## Teslim dosyaları
 
-## Mevcut repository yapısı
+| Gün | Dosyalar / kanıt |
+| --- | --- |
+| 1 — Mimari ve envanter | [KRaft ve repo yapısı](chart-analysis/kraft-architecture.md), [image bağımlılıkları](chart-analysis/image-dependencies.md), [Bitnami kullanım noktaları](chart-analysis/bitnami-usage-points.md) |
+| 2 — Alternatifler | [Karşılaştırma](alternatives/image-comparison.md), [manifest/multiarch kanıtı](alternatives/manifest-evidence.md), [CVE ve güncelleme değerlendirmesi](alternatives/security-evaluation.md), [seçim kararı](alternatives/selected-image-decision.md) |
+| 3 — Values / render | [Orijinal değer özeti](helm-values/original-values.yaml), [yalnız image override deneyi](helm-values/image-only-override.yaml), [yeni chart değerleri](helm-values/non-bitnami-values.yaml), [değişiklik gerekçeleri](helm-values/diff-notes.md), [render sonuçları](tests/helm-template-output.md) |
+| 4 — Gerçek deneme | [Deploy/restart](tests/deploy-notes.md), [producer/consumer](tests/producer-consumer-test.md), [topic yönetimi](tests/topic-management-test.md), [ekran görüntüsü teslim listesi](screenshots/README.md) |
+| 5 — Sonuç ve sunum | Bu README, [karar](alternatives/selected-image-decision.md), [demo notları](DEMO-NOTES.md), [işlem raporu](../IMPLEMENTATION-REPORT.md), [chart denetimi](../CHART-AUDIT.md) |
 
-```text
-.
-├── Chart.yaml                         # Kafka 32.4.4; Bitnami Common chart bağımlılığı
-├── Chart.lock
-├── values-template.yaml               # Kurum registry placeholder'lı ana değer şablonu
-├── values/values-aws-satcom-preprod-3pp.yaml
-├── templates/
-│   ├── _init_containers.tpl           # Kritik Bitnami init/script bağımlılığı
-│   ├── _helpers.tpl                   # Konfigürasyon, TLS ve secret path'leri
-│   ├── broker/ ve controller-eligible/# StatefulSet'ler
-│   ├── provisioning/                  # Topic provisioning Job'ı
-│   └── metrics/                       # JMX exporter kaynakları
-└── kafka-kraft-bitnami-image-research/# Bu analiz ve doğrulama kanıtları
+## Tekrarlanabilir offline doğrulama
+
+Repository kökünden, Helm ve Python/PyYAML bulunan ortamda:
+
+```bash
+bash scripts/validate.sh
+helm lint lab/kafka-apache --strict -f kafka-kraft-bitnami-image-research/helm-values/non-bitnami-values.yaml
+helm template kafka-lab lab/kafka-apache -n kafka-lab -f kafka-kraft-bitnami-image-research/helm-values/non-bitnami-values.yaml
 ```
 
-Chart, controller-eligible StatefulSet'i ile broker StatefulSet'ini, KRaft metadata quorum için controller listener'ını ve isteğe bağlı provisioning/JMX bileşenlerini üretir. `Chart.yaml` içindeki `common` bağımlılığı `oci://registry-1.docker.io/bitnamicharts` kaynağındandır; bu bir container image değil, ayrıca ele alınması gereken Helm-library bağımlılığıdır.
+Values dosyaları birbirinin yerine kullanılmaz: image-only-override kökteki Bitnami chart için negatif uyumluluk deneyidir; non-bitnami-values yalnız yeni bağımsız chart içindir. Ayrıntılar [diff-notes](helm-values/diff-notes.md).
 
-## Doğrulanmış bulgular
+## Sonuçların sınırları
 
-| Alan | Sonuç |
-| --- | --- |
-| Image-only override render edilir mi? | Evet. `helm lint` geçti; `helm template` geçti. |
-| Image-only override deploy edilebilir mi? | Hayır, kanıtlanmış değildir; mevcut template üzerinde teknik olarak beklenen sonuç init-container hatasıdır. |
-| Ana kırılma | `prepare-config`, `/opt/bitnami/scripts/libkafka.sh` dosyasını kaynak alır. Bu dosya ASF imajında yoktur. |
-| İkincil kırılmalar | `/opt/bitnami/kafka/*` mount/path'leri, `KAFKA_CFG_*`, Bitnami provisioning scriptleri ve JMX sidecar komutu. |
-| Mevcut önerideki JMX imajı | `quay.io/prometheus/jmx-exporter:1.0.1` manifesti bulunamadı; kullanılmamalıdır. |
-| Deploy testi | Bu çalışma alanında okunabilir bir kubeconfig yok; Kubernetes deploy/producer/consumer testi yapılmadı. |
+- Gerçek sunucu kanıtı kullanıcı tarafından paylaşılan terminal çıktılarıdır; bu çalışma ortamından SSH ile doğrulama yapılmadı.
+- Mevcut sunucuda üç broker'ın da eski tehlikeli mount düzeninde olduğu --inspect ile teyit edildi. Kaynak pull işlemi çalışan release'i güncellemez.
+- Roadmap, başarısız denemenin teknik açıklamasını ve uygulanabilir sonraki adımı kabul eder. Kalıcılık testi PASS olarak sunulamaz.
+- amd64/arm64 manifest kontrolü çalışma testi değildir. İki mimaride canlı test, CVE scanner, SBOM/imza doğrulaması yapılmadı.
+- Gerçek ekran görüntüleri henüz sağlanmadı; terminal metni ekran görüntüsü gibi etiketlenmedi.
+- GitHub otomasyonu yoktur. Üç pod tek fiziksel sunucudadır; production HA, TLS/SASL, JMX ve dış erişim kapsam dışıdır.
+- Eski verilerin korunması/silinmesi kararı verilmeden upgrade, restart, PVC silme veya veri taşıma yapılmamalı. [Güvenli geçiş koşulları](../deploy/contabo/STORAGE-RECOVERY.md).
 
-Detaylı kanıtlar için [image bağımlılık envanteri](chart-analysis/image-dependencies.md), [bağlı kullanım noktaları](chart-analysis/bitnami-usage-points.md) ve [render testi](tests/helm-template-output.md) dosyalarına bakın.
-
-## Hedef yaklaşım
-
-1. Chart'ı kurum repository'sine fork edin ve Bitnami Common helper çağrılarını yerel helper'larla değiştirin.
-2. `prepare-config` mantığını, `apache/kafka` sözleşmesine göre `/mnt/shared/config/server.properties` üreten bağımsız bir script/ConfigMap olarak yazın.
-3. StatefulSet'lerde `KAFKA_CFG_*` yerine Apache imajının desteklediği `KAFKA_*` değişkenlerini veya doğrudan `server.properties` dosyasını kullanın; data/config/secret mount path'lerini Apache düzenine taşıyın.
-4. `volume-permissions` ve `auto-discovery` scriptlerini POSIX `sh` uyumlu hâle getirin. Sonra sırasıyla doğrulanmış minimal shell ve `registry.k8s.io/kubectl` tabanlı kurum imajlarına geçin.
-5. JMX için yayıncıya ait imajı varsaymak yerine, doğrulanmış JMX Exporter release JAR'ını içeren imzalı kurum imajı üretin veya Java agent modelini seçin.
-6. Digest pinleme, SBOM, imza doğrulama, CVE eşiği ve hem `amd64` hem `arm64` manifest kontrolünü release gate yapın.
-
-Detaylı kabul kriterleri ve aşamalı yol haritası [seçim kararı](alternatives/selected-image-decision.md) içindedir.
-
-## Doğrulama durumu
-
-| Test | Durum | Kanıt |
-| --- | --- | --- |
-| Helm lint | Geçti | `tests/helm-template-output.md` |
-| Helm render | Geçti; runtime uyumluluğu kanıtı değildir | `tests/helm-template-output.md` |
-| Kubernetes deploy | Çalıştırılmadı | `tests/deploy-notes.md` |
-| Topic yönetimi | Çalıştırılmadı | `tests/topic-management-test.md` |
-| Producer/consumer | Çalıştırılmadı | `tests/producer-consumer-test.md` |
-
-## Kaynaklar
-
-- [Apache Kafka Docker dokümantasyonu](https://kafka.apache.org/40/getting-started/docker/)
-- [Apache Kafka Docker kullanım rehberi](https://github.com/apache/kafka/tree/trunk/docker)
-- [Strimzi KRaft dokümantasyonu](https://strimzi.io/docs/operators/latest/deploying)
-- [Confluent Docker platform desteği](https://docs.confluent.io/platform/current/installation/docker/installation.html)
-- [Chainguard Kafka image dokümantasyonu](https://images.chainguard.dev/directory/image/kafka/overview)
-- [Kubernetes registry ve imza/SBOM bilgisi](https://kubernetes.io/releases/download/)
+Sonraki teknik adım: veri koruma kararı ve uygun yedek/ayrı test ortamı onayı ardından 0.2.0'ı canlı doğrulamak; exact PVC mount, sabit cluster/node/directory kimlikleri, restart sonrası eski mesaj okuma ve yeni mesaj yazma kanıtını eklemek.

@@ -4,7 +4,7 @@
 
 | Konum | Bağımlılık | Apache Kafka ile etkisi |
 | --- | --- | --- |
-| `templates/_init_containers.tpl:155` | `. /opt/bitnami/scripts/libkafka.sh` | `prepare-config` anında başarısız olur. |
+| `templates/_init_containers.tpl:155` | `. /opt/bitnami/scripts/libkafka.sh` | ASF image'ında bu dosya yoktur; statik incelemeye göre init başarısızlığı beklenir. Bu image-only deney canlı çalıştırılmadı. |
 | Aynı template | `kafka_server_conf_set`, `configure_kafka_sasl`, `configure_kafka_tls`, `retry_while`, `error` gibi Bitnami shell fonksiyonları | Bu fonksiyonlar bağımsız scriptte yeniden uygulanmalıdır. |
 | `templates/_init_containers.tpl` | `/bitnami/kafka/data/meta.properties`, `/bitnami/kafka` data mount | Persisted metadata ve data mount düzeni taşınmalıdır. |
 | Broker/controller StatefulSet'leri | `/opt/bitnami/kafka/config/server.properties`, log4j, cert ve secret mount'ları | Apache imajının config/secrets düzeneğine göre değiştirilmelidir. |
@@ -32,3 +32,5 @@ Salt image bağımlılığını kaldırmak için en az şu template grupları de
 6. `Chart.yaml` ile Common-library çağrıları (tam Bitnami ayrışması hedefleniyorsa)
 
 Bu nedenle doğru değişim tipi “values override” değil, kontrollü bir chart fork/port işlemidir.
+
+Bu haftaki uygulama, bu özelliklerin tamamını taşımak yerine `lab/kafka-apache` altında sınırlı bağımsız demo chart'ıdır. Orijinal template'ler korunmuştur; demo içinde TLS/SASL/JMX/provisioning Job port edildiği iddia edilmez. [Seçim ve kapsam](../alternatives/selected-image-decision.md).

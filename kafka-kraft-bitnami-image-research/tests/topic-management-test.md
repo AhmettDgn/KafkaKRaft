@@ -1,32 +1,32 @@
-# Topic yönetimi testi
+# Topic yönetimi — gerçek sonuçlar
 
-## Durum
+Kaynak: kullanıcının 2026-08-31 Contabo terminal çıktısı; chart 0.1.0 / kaynak 0747716. Ajan bağımsız bir canlı çalıştırma yapmadı.
 
-Çalıştırılmadı. Kubernetes context'i bu çalışma ortamında erişilebilir değildir ve mevcut image-only override'ın init aşamasında çalışmayacağı belirlenmiştir.
+## Geçen kontroller
 
-## Port edilmiş cluster için test prosedürü
-
-```bash
-POD=kafka-kraft-controller-0
-BOOTSTRAP=kafka-kraft:9092
-
-kubectl exec -n kafka "$POD" -- /opt/kafka/bin/kafka-topics.sh \
-  --bootstrap-server "$BOOTSTRAP" \
-  --create --if-not-exists --topic orders-stream-v1 \
-  --partitions 3 --replication-factor 3
-
-kubectl exec -n kafka "$POD" -- /opt/kafka/bin/kafka-topics.sh \
-  --bootstrap-server "$BOOTSTRAP" --describe --topic orders-stream-v1
-
-kubectl exec -n kafka "$POD" -- /opt/kafka/bin/kafka-topics.sh \
-  --bootstrap-server "$BOOTSTRAP" --alter --topic orders-stream-v1 --partitions 6
+```text
+Topic: lab-smoke-20260831105749-15898
+PartitionCount: 1
+ReplicationFactor: 3
+Configs: min.insync.replicas=2,segment.bytes=268435456,retention.ms=3600000
+Partition: 0  Leader: 1  Replicas: 1,2,0  Isr: 1,2,0
 ```
 
-## Beklenen kanıtlar
+Producer/consumer doğrulaması sonrasında aynı topic 1 partition'dan 3'e artırıldı:
 
-- `create` idempotent olarak başarılı olur.
-- `describe`, üç partition için beklenen leader/replica/ISR bilgisini gösterir.
-- Partition sayısı 3'ten 6'ya çıkar; Kafka partition sayısını azaltmaya izin vermez.
-- Port edilmiş provisioning Job etkinse aynı topic ayrı bir test adıyla, idempotency ve hata görünürlüğü kontrol edilerek test edilir.
+```text
+PartitionCount: 3  ReplicationFactor: 3
+Partition: 0  Leader: 1  Replicas: 1,2,0  Isr: 1,2,0
+Partition: 1  Leader: 0  Replicas: 0,1,2  Isr: 0,1,2
+Partition: 2  Leader: 1  Replicas: 1,2,0  Isr: 1,2,0
+Result: PASS
+```
 
-Komut yolu (`/opt/kafka/bin`) ASF imajına özgü kabul edilmiştir; kurum imajı farklı bir layout sunuyorsa test komutları imaj sözleşmesiyle birlikte güncellenmelidir.
+Uzun TopicId değeri çıkarılmış, gerçek çıktının ilgili alanları korunmuştur. Create, describe, replication/ISR ve partition artırma **geçti**.
+
+## Çalıştırılmayanlar / sınırlamalar
+
+- Topic silme veya veri reset: **yapılmadı**; kullanıcıdan yetki alınmadı.
+- Tekrar create idempotency'si, partition azaltma negatif testi ve provisioning Job: ayrıca test edilmedi.
+- Roadmap'teki queue/topic yönetimi Kafka topic create/describe/partition yönetimiyle karşılanır; ayrı bir queue ürünü kurulduğu iddia edilmez.
+- 0.2.0 canlı topic testi: bekliyor. Eski kurulumda storage sorunu olduğundan yeni mutation testleri öncesinde recovery kararı gerekir.

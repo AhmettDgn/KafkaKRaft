@@ -1,0 +1,22 @@
+# NEGATIVE/OFFLINE EXPERIMENT ONLY: applies to the ROOT Bitnami chart.
+# Do not deploy: its prepare-config container still sources Bitnami shell libraries.
+global:
+  security:
+    allowInsecureImages: true
+image:
+  registry: docker.io
+  repository: apache/kafka
+  tag: "4.0.2"
+  digest: sha256:836cafdad9f4825880d7cf1d5a21202915ae2527bd0ef1c3600c526ed7814d1f
+metrics:
+  jmx:
+    enabled: false
+provisioning:
+  enabled: false
+externalAccess:
+  enabled: false
+defaultInitContainers:
+  volumePermissions:
+    enabled: false
+  autoDiscovery:
+    enabled: false

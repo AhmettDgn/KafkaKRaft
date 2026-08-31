@@ -8,6 +8,7 @@ export HELM_BIN="${HELM_BIN:-helm}"
 while IFS= read -r -d '' file; do bash -n "$file"; done < <(find scripts tests lab/kafka-apache/files -name '*.sh' -print0)
 "${PYTHON_BIN:-python3}" tests/test_chart.py
 "${PYTHON_BIN:-python3}" tests/test_storage.py
+"${PYTHON_BIN:-python3}" tests/test_roadmap.py
 bash tests/startup.sh
 bash tests/cluster-id.sh
 echo 'PASS: offline validation only; no live deployment tested'

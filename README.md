@@ -8,6 +8,8 @@ Kökteki mevcut Bitnami chart aşağıdaki upstream belgeleriyle birlikte korunm
 - [Ubuntu / Contabo manuel kurulum ve güncelleme](deploy/contabo/README.md)
 - [Chart kapsamı ve veri güvenliği](lab/kafka-apache/README.md)
 - [İşlem ve test raporu](IMPLEMENTATION-REPORT.md)
+- [Staj roadmap teslim/kabul matrisi](ROADMAP-COMPLIANCE.md)
+- [Alternatif image araştırması ve demo sonuçları](kafka-kraft-bitnami-image-research/README.md)
 
 GitHub yalnız kaynak deposudur. GitHub Actions, push sonrası dağıtım veya otomatik SSH yoktur.
 Bu çalışma cluster içi PLAINTEXT laboratuvarıdır; production geçişi değildir. Yerel render/mock testlerinin geçmesi gerçek sunucu testi anlamına gelmez.

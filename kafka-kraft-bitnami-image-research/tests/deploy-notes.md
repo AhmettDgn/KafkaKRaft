@@ -1,31 +1,54 @@
-# Deploy doğrulama notları
+# Gerçek deploy denemesi ve başarısızlık analizi
 
-## Gerçekleşen durum
+## Kanıtın kaynağı
 
-Bu çalışma alanında `kubectl config current-context` çağrısı, `C:\Users\HP\.kube\config` erişim izni nedeniyle context okuyamadı. Bu nedenle cluster'a deploy yapılmadı; aşağıdaki pod/log çıktıları üretilmedi. Önceki raporlardaki başarılı deploy, quorum veya restart ifadeleri bu ortam tarafından kanıtlanmıyordu ve kaldırılmıştır.
+2026-08-31 tarihinde kullanıcı Contabo terminal çıktılarını bu görüşmede paylaştı. Ajan sunucuya SSH ile bağlanmadı. Aşağıdaki kayıtlar bu çıktılardan alınmış kısaltılmış metin kanıtıdır; uydurulmuş çalıştırma veya ekran görüntüsü değildir.
 
-Ek olarak mevcut chart'a yalnız `apache/kafka` image override uygulamak teknik olarak güvenli değildir: `prepare-config` init container'ı ASF imajında olmayan `/opt/bitnami/scripts/libkafka.sh` dosyasını çağırır.
+## Bootstrap ve deploy
 
-## Port edilmiş chart için test sırası
+- Ubuntu 24.04, x86_64, 4 vCPU ön kontrolleri PASS.
+- İlk bootstrap tamamlanmamıştı; deploy.env ve deployer.kubeconfig yoktu. Sonraki root çalıştırmasında DEPLOY_USER=kafka-deploy ile exit 0; namespace, namespace Role/RoleBinding, deployer token ve cluster-ID Secret oluşturuldu.
+- `deploy.sh --check`: API server dry-run dahil PASS.
+- Gerçek kaynak SHA: `0747716e0c52b51b8fd2dda307bf99d1ba5b8d97`.
+- Helm release/namespace: kafka-lab; revision 1; chart 0.1.0; image Apache Kafka 4.0.2 sabit digest.
+- 10:56–10:57 UTC deploy/ilk smoke çıktısı:
 
-```bash
-helm upgrade --install kafka-kraft ./ported-chart \
-  -f ported-values.yaml --namespace kafka --create-namespace --wait --timeout 15m
-
-kubectl get pods,statefulset,svc -n kafka
-kubectl get events -n kafka --sort-by=.lastTimestamp
-kubectl logs -n kafka kafka-kraft-controller-0 -c prepare-config
-kubectl logs -n kafka kafka-kraft-controller-0 -c kafka
+```text
+STATUS: deployed
+REVISION: 1
+statefulset rolling update complete 3 pods
+kafka-lab-0  1/1 Running  0
+kafka-lab-1  1/1 Running  0
+kafka-lab-2  1/1 Running  0
+data-kafka-lab-0  Bound  5Gi  RWO  local-path
+data-kafka-lab-1  Bound  5Gi  RWO  local-path
+data-kafka-lab-2  Bound  5Gi  RWO  local-path
+LeaderId: 2
+MaxFollowerLag: 0
 ```
 
-## Kabul kriterleri
+Service'ler client ClusterIP:9092 ve headless:9092/9093. Üç birleşik broker/controller quorum üyesi 0/1/2. Cluster-ID/uzun pod/PVC kimlikleri özet çıktıda çıkarıldı; Secret/kubeconfig içeriği kaydedilmedi.
 
-1. Üç controller ve gerekli broker sayısı Ready olur; `ImagePullBackOff`, `CrashLoopBackOff` veya init hatası yoktur.
-2. Loglar KRaft quorum kurulumu ve controller leader seçimini gösterir; ZooKeeper yoktur.
-3. PVC yeniden bağlandıktan sonra aynı node/directory metadata ile quorum'a katılım gerçekleşir.
-4. Tek bir controller/broker pod'u silindikten sonra StatefulSet geri gelir; topic ve producer/consumer testi yeniden geçer.
-5. TLS/SASL ve external access kullanılıyorsa bu yollar ayrı test edilir.
+## Restart gözlemi — FAIL
 
-## Kanıt formatı
+11:05 UTC `smoke-test.sh --restart`: kafka-lab-0 pod'u yeniden oluştu ve Ready oldu; storage kimlik karşılaştırması FAIL. Yeni pod logu:
 
-Kullanılacak kanıtlar komut, UTC zaman damgası, chart/image digest'i, Kubernetes sürümü ve hassas bilgi içermeyen ilgili log kesitini içermelidir. Ekran görüntüsü ek kanıt olabilir; metin çıktısının yerine geçmez.
+```text
+Formatting metadata directory /var/lib/kafka/data with metadata.version 4.0-IV3.
+Result: FAIL (exit 1)
+```
+
+Salt-okunur mountinfo, **üç pod'da da** aynı tür hatayı doğruladı:
+
+```text
+/k3s/storage/pvc-<id>_kafka-lab_data-kafka-lab-N -> /var/lib/kafka
+/k3s/agent/containerd/.../containers/<id>/volumes/<id> -> /var/lib/kafka/data
+```
+
+Bunlar redakte edilmiş yol özetleridir. Apache imajının child VOLUME'u PVC parent mount'unu örtmüş; mesaj okunması diğer replikalardan recovery ile mümkün olsa da pod-local persistence sağlamamıştır. STALE_BROKER_EPOCH retry logu da görüldü; tek başına kök neden olarak gösterilmedi.
+
+## Düzeltme ve güncel durum
+
+0.2.0 chart: exact PVC mount + kraft alt dizini, image volume'larının açık tanımı, başlangıç storage guard, üç-pod audit ve legacy upgrade engeli. [Ayrıntılı bulgular](../../CHART-AUDIT.md), [kurtarma kapıları](../../deploy/contabo/STORAGE-RECOVERY.md).
+
+Yeni kaynak pull edilmiş olsa da kullanıcı son denetiminde pod'lar hâlâ eski layout'ta: **düzeltilmiş chart'ın canlı deploy/restart kabulü yapılmadı.** Veri silme veya taşıma onayı alınmadan bu aşama tamamlandı sayılmaz. Eski chart'a image-only negatif deney canlıya uygulanmadı.
