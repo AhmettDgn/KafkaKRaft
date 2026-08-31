@@ -391,3 +391,12 @@ Cluster-ID ve uzun TopicId raporda tekrar edilmedi; bunlar credential değildir 
 - Güncellendi: `ROADMAP-COMPLIANCE.md`, `CHART-AUDIT.md`, araştırma README, ADR/seçim kararı, demo notları, deploy/producer-consumer/topic test notları ve bu rapor.
 - Tarihsel bölümlerde o anki “bekliyor/başarısız” kayıtları işlem izi olarak bırakıldı; güncel sonuçlar daha sonraki tarihli başlıklar ve final özetlerde açıkça üstün gelir.
 - Yerel belge link/regresyon kontrolü `tests/test_roadmap.py`, whitespace `git diff --check` ve staged secret-pattern kontrolü commit öncesinde çalıştırılacak. Chart/script kodunda bu raporlama turunda değişiklik yapılmadı.
+
+### Final kabul raporu — Git sonucu
+
+- `tests/test_roadmap.py`: 3/3 GEÇTİ; yeni lab values exact PVC render sözleşmesi, root image-only negatif deney ve belge/yerel linkler. Root negatif render sayıları değişmedi: `/opt/bitnami=4`, `libkafka.sh=1`, `KAFKA_CFG_=1`.
+- `git diff --check` ve staged diff whitespace kontrolü geçti. Değişiklikler yalnız 10 Markdown rapor/araştırma dosyasıdır; chart/script kodu değiştirilmedi.
+- Staged dosyalarda private-key başlığı ve yaygın GitHub/AWS token kalıpları yalnız dosya adı döndürecek şekilde tarandı: eşleşme yok. Bu sınırlı kontrol tam secret scanner değildir.
+- Commit: `84419272035a427ea81b7595a74ca18a4edaa659` — `Record successful Kafka 0.2 persistence acceptance`; 10 dosya, 284 ekleme / 32 silme.
+- `git push origin main`: başarılı, `430f8cb..8441927 main -> main`. Sonraki `git ls-remote origin refs/heads/main` aynı tam SHA'yı döndürdü.
+- Bu sonuç bölümü ayrı rapor takip commit'inde saklanır. Push sunucuda otomatik deploy çalıştırmaz; çalışan Kafka release'in deploy kaynağı 0c0c5ce ve kalıcılık test kaynağı 430f8cb olarak kalır. GitHub otomasyonu yoktur.
