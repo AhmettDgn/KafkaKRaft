@@ -211,3 +211,12 @@ Yeni roadmap testinin ilk çalıştırması bir FAIL ve bir ERROR verdi: test, r
 - Veri geçişi veya ayrı test ortamı onayı ve güvenli erişim sağlanınca 0.2.0'ın exact mount, metadata/PVC kimliği, restart sonrası eski okuma + yeni yazma kabulü yapılmalı. Geçiş kapıları STORAGE-RECOVERY.md içinde; guard devre dışı bırakılmamalı.
 - Bu tur yalnız araştırma/values deney/test/rapor dosyaları değişti; sunucuda geri alınacak işlem yok. Kaynak düzeyinde incelenmiş ters diff/revert kullanılabilir. Önceki 0.2.0 storage koruması kaldırılmamalı; geniş revert ile otomasyon veya eski mount hatası geri getirilmemeli.
 - Commit/push sonucu aşağıdaki takip kaydında tutulacak. Push sunucuda komut çalıştırmaz.
+
+### Roadmap teslimi — Git sonucu
+
+- Commit: `d3a1edee12404c290e9384deb7ddbd1238dc7415` — `Align internship roadmap research, evidence and values tests`; 23 dosya, 693 ekleme / 266 silme.
+- `git push origin main` GEÇTİ: `0c0c5ce..d3a1ede main -> main`. Ardından `git ls-remote origin refs/heads/main` aynı tam SHA'yı döndürdü.
+- Staged diff whitespace kontrolü geçti; `scripts/validate.sh` executable mode 100755 korundu. Eski root Chart/lock/templates/values ve yeni lab chart için staged diff yoktu.
+- Staged dosyalarda private-key başlığı ve yaygın GitHub/AWS token kalıpları, yalnız dosya adı döndürecek şekilde tarandı: eşleşme yok. Bu sınırlı kontrol tam secret scanner değildir. Git'in sandbox içindeki kullanıcı ignore dosyası erişim uyarısı kontrol sonuçlarını değiştirmedi; izinli commit/push başarılı oldu.
+- Sunucuya bu tur bağlanılmadı. Son bildirilen çalışan Kafka revision'ı 0747716 / Helm 1 olarak kalır; kaynak push'u deploy kanıtı değildir.
+- Bu sonuç kaydı ayrı rapor commit'inde tutulur; rapor commit'inin SHA'sı Git history'den okunabilir. Gerçek ekran görüntüleri, veri koruma kararı ve 0.2.0 canlı kalıcılık testi hâlâ açık maddelerdir.
