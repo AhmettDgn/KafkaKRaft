@@ -84,3 +84,11 @@ Kullanıcının yeni talebiyle GitHub Actions, push ile otomatik SSH/dağıtım 
 - `git add -A`, ardından yalnız yeni/güncellenen 10 shell scripti için `git update-index --chmod=+x` uygulandı. `git ls-files --stage` bu dosyaları `100755` gösterdi; dosya kopyası için rehberde `bash` yöntemi de var.
 - `git diff --cached --check` geçti. 34 dosyada değişiklik var; eski workflow silinmesi bu sayıya dahil. Kökteki `Chart.yaml`, `Chart.lock`, `templates`, `charts`, `values` için staged diff boş.
 - Staged metinlerde private-key başlığı, yaygın GitHub token ve AWS access-key kalıpları yalnız dosya adı döndüren denetimle tarandı: eşleşme yok. Bu dar kapsamlı kontrol tam bir secret tarayıcısı yerine geçmez. Gerçek credential dosyası eklenmedi; `artifacts/` dışlandı.
+
+## 2026-08-31 — Commit ve GitHub sonucu
+
+- Uygulama commit'i: `1f96f622ed1e08b4c392949c2090c8a52aff054b` — `Add standalone Apache Kafka lab and manual Ubuntu deployment`.
+- `git push origin main` başarılı: `8e51b1a..1f96f62 main -> main`. Ardından `git ls-remote origin refs/heads/main` yukarıdaki tam SHA'yı döndürdü; GitHub'a gönderim doğrulandı.
+- Commit sonrası çalışma ağacı temizdi. Bu bölüm ayrı, yalnız rapor içeren takip commit'inde tutulur; rapor commit'inin kendi SHA'sı `git log -1 --format=%H -- IMPLEMENTATION-REPORT.md` ile okunabilir.
+- GitHub Actions workflow'u bu uygulama commit'inde kaldırıldı. Push sonrası SSH/deploy çalıştırılmadı; sunucuda çalışan revision hâlâ **yok / test edilmedi**.
+- Sonuç: yerel geliştirme, offline doğrulama ve kaynakların GitHub'a gönderimi tamamlandı. Gerçek Ubuntu/K3s/Kafka testleri erişim ve izin sağlandıktan sonra yapılacak; production uygunluğu onaylanmadı.
