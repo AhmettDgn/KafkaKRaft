@@ -1,0 +1,123 @@
+{{- $previous := lookup "apps/v1" "StatefulSet" .Release.Namespace .Release.Name -}}
+{{- if $previous -}}
+{{- if ne (int $previous.spec.replicas) (int .Values.replicaCount) -}}
+{{- fail "Static quorum replica count cannot change on upgrade. Create a separate lab release." -}}
+{{- end -}}
+{{- end }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "lab.name" . }}
+  labels:
+    {{- include "lab.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  serviceName: {{ include "lab.name" . }}-headless
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  selector:
+    matchLabels:
+      {{- include "lab.labels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "lab.labels" . | nindent 8 }}
+      annotations:
+        checksum/scripts: {{ .Files.Get "files/start.sh" | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 120
+      nodeSelector:
+        kubernetes.io/os: linux
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: kafka
+          image: {{ include "lab.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/bash", "/scripts/start.sh"]
+          securityContext:
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - {name: RELEASE_NAME, value: {{ .Release.Name | quote }}}
+            - {name: CLUSTER_DOMAIN, value: {{ .Values.clusterDomain | quote }}}
+            - {name: REPLICA_COUNT, value: {{ .Values.replicaCount | quote }}}
+            - {name: KAFKA_HEAP_OPTS, value: {{ .Values.heapOpts | quote }}}
+            - {name: LOG_DIR, value: /tmp/kafka-logs}
+            - name: CLUSTER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingClusterIdSecret }}
+                  key: cluster-id
+          ports:
+            - {name: client, containerPort: 9092}
+            - {name: controller, containerPort: 9093}
+          startupProbe:
+            tcpSocket: {port: client}
+            periodSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -ec
+                - KAFKA_HEAP_OPTS='-Xms32m -Xmx128m' /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1
+            periodSeconds: 30
+            timeoutSeconds: 15
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket: {port: client}
+            periodSeconds: 20
+            failureThreshold: 6
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/kafka}
+            - {name: config, mountPath: /work}
+            - {name: tmp, mountPath: /tmp}
+            - {name: scripts, mountPath: /scripts, readOnly: true}
+      volumes:
+        - name: scripts
+          configMap:
+            name: {{ include "lab.name" . }}-scripts
+            defaultMode: 0444
+        - {name: config, emptyDir: {}}
+        - {name: tmp, emptyDir: {}}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "lab.labels" . | nindent 10 }}
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if ne .Values.storage.storageClass "" }}
+        storageClassName: {{ .Values.storage.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.storage.size | quote }}

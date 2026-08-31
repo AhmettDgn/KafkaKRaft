@@ -1,65 +1,116 @@
-# Contabo + GitHub Actions kurulumu
+# Ubuntu / Contabo — elle kurulum
 
-Bu dizindeki gerçek production dosyaları Git'e eklenmez. GitHub'a yapılan her `main` push'ı önce Helm validation çalıştırır; başarılı olursa GitHub Actions, Contabo sunucusuna SSH ile bağlanır ve tam commit SHA'yı deploy eder. SSH anahtarı yalnız GitHub Secret'ta tutulur.
+GitHub otomasyonu yoktur. `git push` sunucuda hiçbir komut çalıştırmaz. Her güncellemede sunucuda `git pull --ff-only`, doğrulama ve deploy komutlarını siz çalıştırırsınız.
 
-## 1. GitHub repository ve Secrets
+## 1. Hazırlık
 
-Repo oluşturulduktan sonra GitHub'da **Settings → Environments → New environment** ile `contabo-production` environment'ını oluşturun. Production branch koruması/required reviewer etkinleştirmek önerilir.
+- Ayrı test sunucusu: Ubuntu 22.04/24.04/26.04, systemd, amd64 veya arm64; en az 4 vCPU, nominal 8 GB RAM, /var/lib altında 30 GiB boş alan. Kaynak kontrolü kapasite garantisi değildir.
+- İlk kurulum için sudo; sonraki deploy/test için normal kullanıcı. Mevcut K3s/Kubernetes varsa script otomatik devralmaz; farklı Helm sürümünü ezmez.
+- Contabo ağ firewall'ında SSH erişiminizi koruyun. **6443/TCP, 10250/TCP, 8472/UDP ve 9092–9093/TCP portlarına internetten erişimi kapatın.** Kafka ve API'yi public açmayın. Egress DNS/HTTPS image/package indirmeleri için gerekli. Script firewall değiştirmez.
+- Aktif UFW/başka host firewall varsa K3s pod/service trafiği ve DNS için yerel kuralları [K3s gereksinimlerine](https://docs.k3s.io/installation/requirements) göre inceleyin; firewall'ı körlemesine kapatmayın.
+- Sabit sürümler: `deploy/contabo/versions.env`. Varsayılan storage `local-path`; 3 adet 5Gi PVC. Local-path kapasitesi gerçek disk kotası değildir; disk izleme/yedek gerekir.
+- Bu kurulum TLS/SASL içermeyen cluster içi testtir. Üç pod aynı fiziksel sunucudadır; sunucu kaybına karşı HA sağlamaz.
 
-Ardından **Settings → Secrets and variables → Actions** altında şu repository secret'larını ekleyin:
+## 2. Repoyu alın ve ön kontrolü çalıştırın
 
-| Secret | Değer |
+Sudo yetkili **normal Linux kullanıcınızla**, kendi home dizininizde:
+
+```bash
+git clone https://github.com/AhmettDgn/KafkaKRaft.git
+cd KafkaKRaft
+bash scripts/contabo/bootstrap.sh --check
+```
+
+Private repo ise GitHub'a erişim için kendi salt-okunur repo anahtarınızı/kimliğinizi kullanın. Token'ı clone URL'sine veya rapora yazmayın. GitHub Actions Secret kurulumu yoktur.
+
+ZIP/dosya kopyası da kullanılabilir. Scriptler LF'dir; executable biti kopyada kaybolursa `bash script.sh` yeterlidir. Git içermeyen kopyada rapor SHA yerine `unversioned` der.
+
+## 3. Bir defalık kurulum
+
+Önce yukarıdaki firewall kısıtlarını gerçekten uygulayın. Aşağıdaki onay değişkeni firewall'ı sizin yerinize yapılandırmaz.
+
+```bash
+mkdir -p artifacts
+set -o pipefail
+sudo env DEPLOY_USER="$(id -un)" LAB_FIREWALL_CONFIRMED=true \
+  bash scripts/contabo/bootstrap.sh --install 2>&1 | tee artifacts/bootstrap.log
+```
+
+`bootstrap.log` yerel kurulum çıktısıdır; Git'e eklenmez. Kurulumun sonucunu uygulama raporunuza aktarabilirsiniz. Script token/kubeconfig içeriğini yazdırmaz; `bash -x` ile çalıştırmayın.
+
+Script, K3s ve Helm'i sabit sürümlerle kurar; namespace erişimini ve kalıcı cluster-ID Secret'ını hazırlar. Mevcut yapılandırma ve cluster ID korunur. Beklenmeyen mevcut servis/namespace/sürüm durumunda durur: silerek veya marker dosyasını elle oluşturarak kontrolü aşmayın.
+
+Yalnız root erişiminiz varsa ilk kurulumda `DEPLOY_USER=kafka-deploy` belirtin. Sonra `sudo -iu kafka-deploy` ile o kullanıcının home dizinine geçip repo'yu yeniden klonlayın; root'a ait erişilemez bir klasörden deploy etmeyin. Script bu kullanıcıya sudo yetkisi vermez.
+
+Sunucuda oluşturulan dosyalar:
+
+| Dosya | Kullanım |
 | --- | --- |
-| `CONTABO_HOST` | Sunucunun IP adresi veya DNS adı |
-| `CONTABO_PORT` | SSH portu (`22` değilse özel port) |
-| `CONTABO_USER` | Sadece deploy için açılmış Linux kullanıcısı |
-| `CONTABO_SSH_PRIVATE_KEY` | GitHub Actions için oluşturulan Ed25519 private key |
-| `CONTABO_KNOWN_HOSTS` | Sunucu host key satırı; `ssh-keyscan` çıktısını körlemesine kabul etmeyin, sağlayıcının fingerprint'i ile doğrulayın |
+| /etc/kafka-kraft/deploy.env | Manuel deploy ayarları |
+| /etc/kafka-kraft/lab-values.yaml | Yeni chart'ın override değerleri |
+| /etc/kafka-kraft/deployer.kubeconfig | Yalnız lab namespace yetkili kimlik |
+| /var/log/kafka-lab/*.md | Deploy ve Kafka test sonuçları |
 
-## 2. Contabo'da bir defalık kurulum
+Yapılandırma/kubeconfig yalnız root ve deploy kullanıcısının özel primary grubuna okunabilir. Script paylaşılan primary grubu reddeder; sonradan bu gruba başka kullanıcı eklemeyin. Kubeconfig'i Git'e, rapora veya mesajlara kopyalamayın. `/etc/rancher/k3s/k3s.yaml` admin kimliğidir; deploy kullanıcısına verilmez.
 
-Yerel makinenizde ayrı bir deploy anahtarı üretin; mevcut kişisel SSH anahtarınızı kullanmayın:
+## 4. Doğrulayın, kurun, mesaj testi yapın
 
-```bash
-ssh-keygen -t ed25519 -f ./contabo-github-actions -C "github-actions-kafka-deploy"
-ssh-copy-id -i ./contabo-github-actions.pub DEPLOY_USER@CONTABO_HOST
-```
-
-Private key'in tamamını `CONTABO_SSH_PRIVATE_KEY` secret'ına, public key'i sunucudaki deploy kullanıcısının `~/.ssh/authorized_keys` dosyasına ekleyin. Sunucunun fingerprint'ini güvenilir bir kanaldan doğruladıktan sonra şu komutun çıktısını `CONTABO_KNOWN_HOSTS` secret'ına girin:
+Normal deploy kullanıcısıyla, repo dizininde:
 
 ```bash
-ssh-keyscan -p CONTABO_PORT -H CONTABO_HOST
+bash scripts/validate.sh
+bash scripts/contabo/deploy.sh --check
+bash scripts/contabo/deploy.sh
+bash scripts/lab/smoke-test.sh
+# Yalnız bu laboratuvardaki kafka-lab-0 pod'unu yenileyen kesintili test:
+bash scripts/lab/smoke-test.sh --restart
 ```
 
-Bootstrap scriptini sunucuda çalıştırın (repository ilk kez erişilebilir olduktan sonra):
+- `validate.sh`: yerel lint/render/Bash ve mock testler; Kubernetes'e bağlanmaz.
+- `deploy.sh --check`: ayrıca API server dry-run; gerçek dağıtım değildir.
+- `deploy.sh`: Helm install/upgrade ve readiness bekler. Başarısız kurulumda kaynakları teşhis için bırakır; PVC silmez.
+- Smoke testi gerçek topic oluşturur, mesaj yazar/okur ve ISR kontrol eder. Restart testi bir pod'u silip yeniden oluşmasını bekler, metadata ve mesaj kalıcılığını kontrol eder; geri gelen cluster'a yeni mesaj da yazar.
+- Test topic'leri bilerek bırakılır, mesaj retention'ı bir saattir. Topic isimleri rapordadır; topic nesneleri otomatik silinmez.
+
+Mevcut Bitnami `values/` dosyalarını bu chart'a vermeyin. Replica sayısı/cluster adı/namespace/domain sonradan değiştirilemez; yeni izole release ve boş storage gerekir. Varsayılan manuel scriptler yalnız `kafka-lab` namespace/release destekler.
+
+## 5. Sonraki güncellemeler
 
 ```bash
-git clone git@github.com:GITHUB_OWNER/GITHUB_REPOSITORY.git /tmp/kafka-cluster-kraft
-cd /tmp/kafka-cluster-kraft
-DEPLOY_USER=DEPLOY_USER DEPLOY_DIR=/opt/kafka-cluster-kraft bash scripts/contabo/bootstrap.sh
-sudo cp deploy/contabo/deploy.env.example /etc/kafka-kraft/deploy.env
-sudo chmod 600 /etc/kafka-kraft/deploy.env
-sudo chown root:root /etc/kafka-kraft/deploy.env
-sudoedit /etc/kafka-kraft/deploy.env
-sudoedit /etc/kafka-kraft/values-production.yaml
-git clone git@github.com:GITHUB_OWNER/GITHUB_REPOSITORY.git /opt/kafka-cluster-kraft
+git status --short
+git pull --ff-only origin main
+git rev-parse HEAD
+bash scripts/validate.sh
+bash scripts/contabo/deploy.sh --check
+bash scripts/contabo/deploy.sh
+bash scripts/lab/smoke-test.sh
 ```
 
-`values-production.yaml` içerisine TLS/SASL için mevcut Kubernetes Secret adlarını ve ortam değerlerini yazın; plaintext parola eklemeyin. Deploy kullanıcısının seçili Kubernetes cluster için yalnız gereken namespace izinlerine sahip kubeconfig'e erişmesi gerekir.
+Git pull dosyaları getirir; **deploy komutuna kadar cluster değişmez**. Deploy kirli checkout'ı reddeder. Sunucu ayarlarını repo dışında `/etc/kafka-kraft/lab-values.yaml` içinde `sudoedit` ile düzenleyin; override değişikliklerini hassas veri olmadan raporlayın.
 
-## 3. Güvenli etkinleştirme sırası
-
-1. `DEPLOY_ENABLED=false` ile ilk push yapın. GitHub Actions SSH bağlantısını ve server checkout'ını doğrular; `helm upgrade` çalışmaz.
-2. Chart portu tamamlanmadan `ALLOW_UNPORTED_BITNAMI_CHART` değerini `true` yapmayın. Script, `/opt/bitnami/scripts/libkafka.sh` tespit ederse deploy'u bilinçli olarak durdurur.
-3. Test cluster'ında KRaft/topic/producer/consumer kontrollerini tamamlayın.
-4. Production values dosyasını gözden geçirip `DEPLOY_ENABLED=true` yapın.
-5. `main` branch'e yapılan her push, doğrulama sonrasında tam SHA'yı `helm upgrade --install --atomic --wait` ile deploy eder. Hata durumunda Helm atomik rollback uygular.
-
-## Geri alma
-
-GitHub'da önceki iyi commit'i `main`e geri alın veya revert commit'i push edin. Deploy script commit SHA'yı kullandığı için server üzerinde “latest” yerine tam doğrulanmış revision çalışır. Kubernetes release geçmişi için:
+## 6. Teşhis ve geri alma
 
 ```bash
-helm history kafka-kraft -n kafka
-helm rollback kafka-kraft REVISION -n kafka --wait --timeout 15m
+export KUBECONFIG=/etc/kafka-kraft/deployer.kubeconfig
+kubectl get pods,pvc,svc -n kafka-lab
+kubectl get events -n kafka-lab --sort-by=.lastTimestamp
+kubectl logs kafka-lab-0 -n kafka-lab -c kafka --tail=100
+helm history kafka-lab -n kafka-lab
 ```
+
+Doğrulanmış önceki Helm revision'ına dönmek için `REVISION` yerine history'deki numarayı yazın:
+
+```bash
+helm rollback kafka-lab REVISION -n kafka-lab --wait --timeout 15m
+bash scripts/lab/smoke-test.sh
+```
+
+Rollback Kafka storage formatını/verisini geri almaz; Kafka sürüm düşürme işlemini körlemesine yapmayın. İlk kurulum başarısızsa eski revision yoktur; logları inceleyip aynı kimlik/PVC ile düzeltme deploy'u yapın. Git kaynağında geri alma için incelenmiş revert commit'i kullanın; checkout ile çalışan revision farkını rapora yazın.
+
+**PVC, namespace veya cluster-ID Secret'ını silmeyin; `k3s-uninstall.sh` çalıştırmayın.** Helm uninstall PVC'leri Retain nedeniyle bırakır; namespace silmek ise PVC'leri de siler. Local-path PV reclaim politikası nedeniyle PVC silinmesi veriyi kalıcı kaybettirebilir. Eksik cluster-ID + mevcut PVC durumunda script durur: güvenli yedekten kimliği geri yükleyin; yeni ID üretmeyin.
+
+K3s ve PV verisi için ayrı, doğrulanmış yedekleme gereklidir. Bu paket production yedekleme/migration otomasyonu içermez. ServiceAccount credential rotasyonu gerektiğinde admin olarak token Secret'ını yenileyip bootstrap'ı tekrar çalıştırın; Kafka cluster-ID Secret'ına dokunmayın.
+
+## Henüz doğrulanmamış olanlar
+
+Yerel lint/render/mock testleri gerçek Contabo kurulumu değildir. Ubuntu bootstrap, pinned Linux araçları, K3s/PVC izinleri, image pull ve Kafka quorum/mesaj/restart testleri hedef sunucuda çalıştırılmalıdır. Sonuçları `IMPLEMENTATION-REPORT.md` ve sunucu `/var/log/kafka-lab` raporlarıyla ayrı kaydedin.

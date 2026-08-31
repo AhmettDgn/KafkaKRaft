@@ -1,0 +1,9 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "lab.name" . }}
+spec:
+  maxUnavailable: {{ ternary 1 0 (eq (int .Values.replicaCount) 3) }}
+  selector:
+    matchLabels:
+      {{- include "lab.labels" . | nindent 6 }}

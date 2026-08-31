@@ -23,3 +23,15 @@
 img/
 # Changelog
 CHANGELOG.md
+bin/
+helm.zip
+lab/
+scripts/
+tests/
+deploy/
+artifacts/
+.github/
+kafka-kraft-bitnami-image-research/
+original-render.yaml
+non-bitnami-render.yaml
+IMPLEMENTATION-REPORT.md

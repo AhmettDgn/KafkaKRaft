@@ -1,0 +1,21 @@
+# LAB ONLY: combined broker/controllers, internal PLAINTEXT, fixed static quorum.
+replicaCount: 3
+existingClusterIdSecret: kafka-lab-cluster-id
+clusterDomain: cluster.local
+image:
+  repository: docker.io/apache/kafka
+  tag: "4.0.2"
+  digest: sha256:836cafdad9f4825880d7cf1d5a21202915ae2527bd0ef1c3600c526ed7814d1f
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+storage:
+  size: 5Gi
+  storageClass: local-path
+resources:
+  requests:
+    cpu: 250m
+    memory: 768Mi
+  limits:
+    cpu: "1"
+    memory: 1536Mi
+heapOpts: "-Xms512m -Xmx512m"

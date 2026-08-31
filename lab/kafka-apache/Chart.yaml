@@ -1,0 +1,6 @@
+apiVersion: v2
+name: kafka-apache-lab
+description: Standalone Apache Kafka KRaft laboratory chart; no external chart dependencies.
+type: application
+version: 0.1.0
+appVersion: "4.0.2"

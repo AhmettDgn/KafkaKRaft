@@ -7,3 +7,8 @@ deploy/contabo/values-production.yaml
 # Local Helm artifacts
 charts/*.tgz.tmp
 *.tgz.tmp
+/artifacts/
+__pycache__/
+.venv/
+deploy/contabo/*.kubeconfig
+deploy/contabo/lab-values.yaml

@@ -1,5 +1,7 @@
 # Kafka KRaft chart'ından Bitnami bağımlılığını kaldırma analizi
 
+> 2026-08-31 güncellemesi: Bu klasör tarihsel analizdir. Artık ayrı [Apache Kafka 4.0.2 laboratuvar chart'ı](../lab/kafka-apache) bulunmaktadır. Güncel kapsam/test durumu [uygulama raporundadır](../IMPLEMENTATION-REPORT.md). Aşağıdaki eski image/fork önerileri yeni kurulum talimatı değildir; analizdeki values dosyaları yeni chart'a verilmemelidir. GitHub otomasyonu kaldırılmıştır.
+
 ## Karar özeti
 
 Mevcut chart, yalnızca image repository/tag override edilerek `apache/kafka` ile güvenle çalıştırılamaz. `helm template` başarılı olsa da template'ler Bitnami'nin dosya sistemi, bash kütüphaneleri ve `KAFKA_CFG_*` sözleşmesine doğrudan bağlıdır. Bu nedenle **salt values override yaklaşımı reddedilmiştir**.

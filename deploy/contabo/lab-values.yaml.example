@@ -1,0 +1,6 @@
+# Overrides for the independent lab/kafka-apache chart only.
+replicaCount: 3
+existingClusterIdSecret: kafka-lab-cluster-id
+storage:
+  storageClass: local-path
+  size: 5Gi

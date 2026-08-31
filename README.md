@@ -1,3 +1,17 @@
+# Kafka KRaft — bağımsız Apache laboratuvarı
+
+Yeni, Bitnami bağımlılığı olmayan chart: [`lab/kafka-apache`](lab/kafka-apache).
+Kökteki mevcut Bitnami chart aşağıdaki upstream belgeleriyle birlikte korunmuştur; yeni kurulumlarda **kök chart'ı kullanmayın**.
+
+- [Ubuntu / Contabo manuel kurulum ve güncelleme](deploy/contabo/README.md)
+- [Chart kapsamı ve veri güvenliği](lab/kafka-apache/README.md)
+- [İşlem ve test raporu](IMPLEMENTATION-REPORT.md)
+
+GitHub yalnız kaynak deposudur. GitHub Actions, push sonrası dağıtım veya otomatik SSH yoktur.
+Bu çalışma cluster içi PLAINTEXT laboratuvarıdır; production geçişi değildir. Yerel render/mock testlerinin geçmesi gerçek sunucu testi anlamına gelmez.
+
+---
+
 <!--- app-name: Apache Kafka -->
 
 # Bitnami package for Apache Kafka
