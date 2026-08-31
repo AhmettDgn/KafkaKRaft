@@ -1,0 +1,8 @@
+{
+  "reference": "docker.io/apache/kafka:4.0.2",
+  "digest": "sha256:836cafdad9f4825880d7cf1d5a21202915ae2527bd0ef1c3600c526ed7814d1f",
+  "platforms": ["linux/amd64", "linux/arm64"],
+  "volumes": ["/etc/kafka/secrets", "/var/lib/kafka/data", "/mnt/shared/config"],
+  "verified": "2026-08-31",
+  "source": "docker buildx imagetools inspect apache/kafka:4.0.2 --format '{{json .Image}}'"
+}

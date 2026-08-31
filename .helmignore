@@ -35,3 +35,4 @@ kafka-kraft-bitnami-image-research/
 original-render.yaml
 non-bitnami-render.yaml
 IMPLEMENTATION-REPORT.md
+CHART-AUDIT.md

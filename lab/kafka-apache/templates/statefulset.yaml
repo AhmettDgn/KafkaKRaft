@@ -1,4 +1,16 @@
 {{- $previous := lookup "apps/v1" "StatefulSet" .Release.Namespace .Release.Name -}}
+{{- include "lab.upgradeGuard" (dict "previous" $previous "current" .) -}}
+{{- if and .Release.IsUpgrade (not $previous) -}}
+{{- fail "Existing release has no StatefulSet: recovery review required, refusing automatic recreation." -}}
+{{- end -}}
+{{- if and .Release.IsInstall (not $previous) -}}
+{{- $claims := lookup "v1" "PersistentVolumeClaim" .Release.Namespace "" -}}
+{{- range $claim := $claims.items -}}
+{{- if hasPrefix (printf "data-%s-" $.Release.Name) $claim.metadata.name -}}
+{{- fail "Existing release PVC found on initial install; explicit recovery is required, not a fresh format." -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 {{- if $previous -}}
 {{- if ne (int $previous.spec.replicas) (int .Values.replicaCount) -}}
 {{- fail "Static quorum replica count cannot change on upgrade. Create a separate lab release." -}}
@@ -14,6 +26,7 @@ spec:
   replicas: {{ .Values.replicaCount }}
   serviceName: {{ include "lab.name" . }}-headless
   podManagementPolicy: Parallel
+  minReadySeconds: 30
   updateStrategy:
     type: RollingUpdate
   persistentVolumeClaimRetentionPolicy:
@@ -27,6 +40,8 @@ spec:
       labels:
         {{- include "lab.labels" . | nindent 8 }}
       annotations:
+        kafka-lab/storage-layout: pvc-v2
+        kafka-lab/identity-contract: {{ include "lab.identity" . | quote }}
         checksum/scripts: {{ .Files.Get "files/start.sh" | sha256sum }}
     spec:
       automountServiceAccountToken: false
@@ -69,6 +84,8 @@ spec:
             - {name: REPLICA_COUNT, value: {{ .Values.replicaCount | quote }}}
             - {name: KAFKA_HEAP_OPTS, value: {{ .Values.heapOpts | quote }}}
             - {name: LOG_DIR, value: /tmp/kafka-logs}
+            - {name: DATA_VOLUME_ROOT, value: /var/lib/kafka/data}
+            - {name: DATA_DIR, value: /var/lib/kafka/data/kraft}
             - name: CLUSTER_ID
               valueFrom:
                 secretKeyRef:
@@ -97,7 +114,10 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
-            - {name: data, mountPath: /var/lib/kafka}
+            # Exact image VOLUME target; an ancestor mount is NOT sufficient in containerd.
+            - {name: data, mountPath: /var/lib/kafka/data}
+            - {name: image-secrets, mountPath: /etc/kafka/secrets, readOnly: true}
+            - {name: image-config, mountPath: /mnt/shared/config, readOnly: true}
             - {name: config, mountPath: /work}
             - {name: tmp, mountPath: /tmp}
             - {name: scripts, mountPath: /scripts, readOnly: true}
@@ -108,6 +128,8 @@ spec:
             defaultMode: 0444
         - {name: config, emptyDir: {}}
         - {name: tmp, emptyDir: {}}
+        - {name: image-secrets, emptyDir: {}}
+        - {name: image-config, emptyDir: {}}
   volumeClaimTemplates:
     - metadata:
         name: data

@@ -41,6 +41,8 @@ flock -n 9 || { echo "Another deployment is in progress"; exit 1; }
 chart="$root/lab/kafka-apache"
 kubectl auth can-i create statefulsets.apps -n "$NAMESPACE"
 kubectl get secret kafka-lab-cluster-id -n "$NAMESPACE" -o name
+# Refuse legacy/shadowed storage BEFORE any apply or Helm mutation.
+bash "$root/scripts/lab/storage-audit.sh" --pre-deploy
 helm lint "$chart" --strict -f "$VALUES_FILE"
 manifest="$(mktemp)"
 helm template "$RELEASE_NAME" "$chart" -n "$NAMESPACE" -f "$VALUES_FILE" > "$manifest"
@@ -53,5 +55,6 @@ kubectl apply --dry-run=server -n "$NAMESPACE" -f "$manifest" >/dev/null
 helm upgrade --install "$RELEASE_NAME" "$chart" --namespace "$NAMESPACE" \
   --values "$VALUES_FILE" --wait --timeout "${HELM_TIMEOUT:-15m}"
 kubectl rollout status "statefulset/$RELEASE_NAME" -n "$NAMESPACE" --timeout=10m
+bash "$root/scripts/lab/storage-audit.sh"
 helm status "$RELEASE_NAME" -n "$NAMESPACE"
 echo "Result: PASS (deployment); run smoke-test.sh separately for Kafka data-path evidence"

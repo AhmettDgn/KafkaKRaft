@@ -1,5 +1,7 @@
 # Ubuntu / Contabo — elle kurulum
 
+> **Önemli — 0.1.0 / commit 0747716 ile kurulmuş mevcut cluster:** Normal deploy veya restart çalıştırmayın. Containerd child-volume çakışması doğrulanmıştır. Önce [STORAGE-RECOVERY.md](STORAGE-RECOVERY.md) dosyasını okuyup salt-okunur envanteri alın. Yeni 0.2.0 chart eski kuruluma otomatik upgrade'i bilinçli olarak engeller. Aşağıdaki ilk kurulum adımları yalnız boş/yeni ortama yöneliktir.
+
 GitHub otomasyonu yoktur. `git push` sunucuda hiçbir komut çalıştırmaz. Her güncellemede sunucuda `git pull --ff-only`, doğrulama ve deploy komutlarını siz çalıştırırsınız.
 
 ## 1. Hazırlık
@@ -68,6 +70,7 @@ bash scripts/lab/smoke-test.sh --restart
 
 - `validate.sh`: yerel lint/render/Bash ve mock testler; Kubernetes'e bağlanmaz.
 - `deploy.sh --check`: ayrıca API server dry-run; gerçek dağıtım değildir.
+- `storage-audit.sh`: üç pod'un gerçek mount kaynakları, PVC eşlemesi ve metadata kimliğini salt-okunur denetler. Eski storage düzeninde FAIL dönmesi beklenen güvenlik engelidir.
 - `deploy.sh`: Helm install/upgrade ve readiness bekler. Başarısız kurulumda kaynakları teşhis için bırakır; PVC silmez.
 - Smoke testi gerçek topic oluşturur, mesaj yazar/okur ve ISR kontrol eder. Restart testi bir pod'u silip yeniden oluşmasını bekler, metadata ve mesaj kalıcılığını kontrol eder; geri gelen cluster'a yeni mesaj da yazar.
 - Test topic'leri bilerek bırakılır, mesaj retention'ı bir saattir. Topic isimleri rapordadır; topic nesneleri otomatik silinmez.
@@ -113,4 +116,4 @@ K3s ve PV verisi için ayrı, doğrulanmış yedekleme gereklidir. Bu paket prod
 
 ## Henüz doğrulanmamış olanlar
 
-Yerel lint/render/mock testleri gerçek Contabo kurulumu değildir. Ubuntu bootstrap, pinned Linux araçları, K3s/PVC izinleri, image pull ve Kafka quorum/mesaj/restart testleri hedef sunucuda çalıştırılmalıdır. Sonuçları `IMPLEMENTATION-REPORT.md` ve sunucu `/var/log/kafka-lab` raporlarıyla ayrı kaydedin.
+0.1.0 için kullanıcı çıktıları gerçek bootstrap/deploy/mesaj başarısını ve kalıcılık hatasını doğruladı. 0.2.0 düzeltmesinin gerçek Contabo mount/restart doğrulaması henüz yapılmadı. Yeni offline testlerin geçmesi bu doğrulamanın yerine geçmez. Sonuçları `IMPLEMENTATION-REPORT.md` ve sunucu `/var/log/kafka-lab` raporlarıyla ayrı kaydedin.

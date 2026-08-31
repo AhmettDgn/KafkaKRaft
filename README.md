@@ -1,5 +1,7 @@
 # Kafka KRaft — bağımsız Apache laboratuvarı
 
+> **Mevcut 0.1.0 kurulumları için kalıcılık uyarısı:** Veri dizinini örten containerd volume hatası bulundu. Yeni chart 0.2.0; eski cluster üzerinde normal upgrade/restart yapmadan önce [veri koruma rehberini](deploy/contabo/STORAGE-RECOVERY.md) okuyun. Ayrıntılı bulgular: [chart denetim raporu](CHART-AUDIT.md).
+
 Yeni, Bitnami bağımlılığı olmayan chart: [`lab/kafka-apache`](lab/kafka-apache).
 Kökteki mevcut Bitnami chart aşağıdaki upstream belgeleriyle birlikte korunmuştur; yeni kurulumlarda **kök chart'ı kullanmayın**.
 

@@ -1,5 +1,16 @@
 # Uygulama raporu
 
+## GÜNCEL UYARI — 2026-08-31 kalıcılık olayı
+
+Önceki bölümler tarihsel kayıttır. Kullanıcının sunucu çıktıları artık gerçek bootstrap/deploy/smoke başarısını, fakat restart kalıcılık testinin **başarısız** olduğunu gösteriyor. Sunucudaki uygulama kaynağı `0747716`, Helm revision 1. Yeni düzeltme henüz sunucuda uygulanmadı. Pod/PVC/Secret silmeyin ve eski kurulumu normal Helm upgrade ile değiştirmeyin.
+
+- 10:56–10:57 UTC: üç pod Running, üç PVC Bound, quorum/mesajlaşma başarılı (kullanıcının paylaştığı kanıt; ajan sunucuya bağlanmadı).
+- 11:05 UTC restart testi FAIL; yeni pod logunda `Formatting metadata directory /var/lib/kafka/data` görüldü. Üç mesajın okunması diğer replikaların varlığı nedeniyle pod-local kalıcılık kanıtı değildir.
+- Mountinfo kök nedeni doğruladı: PVC `/var/lib/kafka` üzerinde, gerçek Kafka dizini `/var/lib/kafka/data` ise containerd `containers/<id>/volumes/<id>` kaynağı üzerinde. Kimlik/hash ve hosta özel uzun ID'ler rapora kopyalanmadı.
+- Hata sorumluluğu: ilk chart, Apache image-defined child volume ile PVC ancestor mount çakışmasını ele almıyordu. Eski offline testler bu runtime davranışını modellemiyordu. PVC Bound/render PASS verinin gerçekten PVC'ye yazıldığını kanıtlamaz.
+- Kullanıcı düzeltme, detaylı chart/çakışma denetimi, veri koruma rehberi ve Markdown raporunu onayladı. Bu çalışma sunucuda veri taşıma/silme işlemi yapmaz.
+- İncelenen resmi kaynaklar: [Apache image VOLUME](https://github.com/apache/kafka/blob/4.0.2/docker/jvm/Dockerfile), [containerd tam yol eşleme](https://github.com/containerd/containerd/blob/main/internal/cri/server/helpers.go), [containerd image volumes](https://github.com/containerd/containerd/blob/main/docs/cri/config.md), [StatefulSet update davranışı](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/).
+
 ## 2026-08-31 — Başlangıç ve kapsam
 
 - Amaç: mevcut Bitnami chart'ını koruyarak bağımsız Apache Kafka KRaft laboratuvar chart'ı, Ubuntu/K3s kurulumu ve GitHub otomasyonu hazırlamak.
@@ -92,3 +103,44 @@ Kullanıcının yeni talebiyle GitHub Actions, push ile otomatik SSH/dağıtım 
 - Commit sonrası çalışma ağacı temizdi. Bu bölüm ayrı, yalnız rapor içeren takip commit'inde tutulur; rapor commit'inin kendi SHA'sı `git log -1 --format=%H -- IMPLEMENTATION-REPORT.md` ile okunabilir.
 - GitHub Actions workflow'u bu uygulama commit'inde kaldırıldı. Push sonrası SSH/deploy çalıştırılmadı; sunucuda çalışan revision hâlâ **yok / test edilmedi**.
 - Sonuç: yerel geliştirme, offline doğrulama ve kaynakların GitHub'a gönderimi tamamlandı. Gerçek Ubuntu/K3s/Kafka testleri erişim ve izin sağlandıktan sonra yapılacak; production uygunluğu onaylanmadı.
+
+## 2026-08-31 — Kalıcılık düzeltmesi ve ayrıntılı çakışma denetimi
+
+Önceki "sunucuda test edilmedi" kayıtları ilk teslim anına aittir. Kullanıcı sonraki mesajlarda bootstrap (exit 0), 0.1.0 deploy ve smoke başarısını, restart FAIL ve mountinfo kanıtını paylaşmıştır. Güncel canlı durum eski 0.1.0 kaynak `0747716` / Helm revision 1'dir; yeni kod henüz orada çalıştırılmadı.
+
+### Değiştirilen alanlar ve amaç
+
+- `lab/kafka-apache/Chart.yaml`: chart 0.2.0; Kafka image/tag/digest değişmedi.
+- `templates/statefulset.yaml`: PVC exact `/var/lib/kafka/data`; Kafka `/var/lib/kafka/data/kraft`. Diğer iki image VOLUME readonly emptyDir ile açık tanımlandı. `minReadySeconds=30`; identity/layout annotation'ları. Eksik StatefulSet'li upgrade ve eski PVC'li fresh install için guard.
+- `templates/_helpers.tpl`: legacy layout'a upgrade ret; immutable namespace/release/quorum/Secret/domain/PVC size/class imzası. Eski annotation'ı elle değiştirerek bu kontrolün aşılmaması rehberde belirtildi.
+- `files/start.sh`: format öncesi exact mount, container-local root, nested mount, symlink denetimi. Log dizini dışındaki PVC root marker, daha önce initialized volume'da metadata kaybının yeni formatla gizlenmesini engeller. Marker ilk format niyeti öncesinde yazılır; yarım format sonrası otomatik tekrar denemek yerine inceleme gerekir.
+- `scripts/lab/storage_audit.py` ve `storage-audit.sh`: read-only üç-pod mount/PVC/effective log.dirs/metadata denetimi; `--inspect` eski layout'ta da mount kanıtını toplar fakat FAIL döner. Snapshot'larda credential/cluster ID gövdesi değil kimlik hash'i tutulur. K3s local-path kaynak dizini Bound PV adıyla eşleştirilir.
+- `scripts/contabo/deploy.sh`: Helm mutation öncesi storage audit/legacy ret; rollout sonrası tekrar audit. `--check` eski kurulumu değiştirmeden reddeder.
+- `scripts/lab/smoke-test.sh`: default context'e sessiz düşüş kaldırıldı. Audit başarısızsa topic/pod mutation başlamaz. Restart öncesi/sonrası üç pod'un semantik storage kimliği, PVC UID/PV ve mount kaynağı karşılaştırılır. Yorum/timestamp farkı göz ardı edilir, directory/cluster/node ID değişimi reddedilir; FAIL checkpoint'i görünür.
+- `tests/test_storage.py`, image volume fixture ve startup testleri eklendi/genişletildi. Mock kubectl akışı API hatası/eski layout/kalmış PVC durumlarının ilk aşamada reddini ve üç-pod snapshot karşılaştırmasını doğrular.
+- `CHART-AUDIT.md`: önem dereceleriyle 9 bulgu, image/mount/RBAC/DNS/probe/update/Bitnami birlikte bulunma incelemesi; sınırlar ve artık riskler.
+- `deploy/contabo/STORAGE-RECOVERY.md`: salt-okunur envanter, tutarlı yedek/restore kapısı, broker bazlı hedef düzeni, kontrollü replacement kabul kriterleri ve yasak/tehlikeli işlemler. **Çalıştırılabilir otomatik canlı veri taşıma scripti yazılmadı**; sağlıklı yedek ve hosta özel durdurma/GC koşulları bilinmeden güvenli olduğu iddia edilemez.
+- Ana/Contabo/chart README dosyalarına eski cluster için deploy/restart uyarısı ve güncel test durumu eklendi. `.helmignore` yeni audit raporunu eski chart paketinden dışlar. Eski Bitnami template/values dosyaları korunur; GitHub otomasyonu eklenmedi.
+
+### Komutlar, sonuçlar ve hatalar
+
+| Komut / kontrol | Sonuç |
+| --- | --- |
+| `docker buildx imagetools inspect apache/kafka:4.0.2 --format '{{json .Image}}'` | İzinli registry okuması: amd64/arm64 üzerinde aynı 3 VOLUME yolu, appuser; fixture/sözleşme ile uyumlu |
+| `shellcheck --external-sources --source-path=SCRIPTDIR <sh dosyaları>` | Geçti, uyarı yok |
+| `HELM_BIN=<Helm 3.21.4> PYTHON_BIN=python bash scripts/validate.sh` | Geçti: 6 render + 10 storage Python testi; 12 startup senaryosu + 4 cluster-ID senaryosu; Bash syntax |
+| `helm package lab/kafka-apache --destination artifacts` | Geçti; 0.2.0 paketi yalnız ignored artifacts altında |
+| `helm lint artifacts/kafka-apache-lab-0.2.0.tgz --strict` | Geçti; yalnız öneri seviyesinde icon mesajı |
+| `helm template kafka-lab artifacts/kafka-apache-lab-0.2.0.tgz -n kafka-lab --output-dir artifacts/packaged-render` | Geçti; paket içi startup/config/template çözümü doğrulandı |
+| `helm lint . -f values-template.yaml --strict` | Eski kök Bitnami chart için geçti; kökte values.yaml yok INFO mesajı, açık values-template kullanıldı. Production deploy kanıtı değil |
+| `git diff --check` | Geçti |
+| `docker version --format '{{.Server.Version}}'` | Başarısız: Docker daemon named pipe yok. İlk sandbox denemesinde config erişimi de engelliydi; izinli tekrarda da daemon yok. Gerçek container/K3s testi yapılmadı |
+
+Testler önce küçük grup (7 storage testi), sonra fake API/snapshot akışı eklenerek 10 storage testiyle tekrarlandı; ikisi de geçti. Doğrulanmamış sunucu taşıması, CSI alternatifleri, load/CVE taraması ve yeni chart restart testi PASS olarak gösterilmedi.
+
+### Şu anki teslim ve kalan iş
+
+- Kod düzeltmesi ve offline denetim tamamlandı. Mevcut canlı release tehlikeli layout'ta kalmaya devam ediyor; dosyaları pull etmek onu düzeltmez.
+- Kullanıcıdan gereken sonraki güvenli çıktı: `bash scripts/lab/storage-audit.sh --inspect` (üç broker). Eski layout için FAIL beklenir; bu bir güvenlik engelidir.
+- Snapshot/yedek olanağı, korunacak veriler ve bakım aralığı doğrulanmadan veri taşıma/replacement yapılmayacak. PVC/Secret silmek, raw helm rollback, toplu restart veya containerd cleanup önerilmedi.
+- Sunucuda bu tur hiçbir komut çalıştırılmadı. Sunucu kanıtları kullanıcı tarafından paylaşılmıştır; yeni fixture'lar sentetik/mock kanıttır, gerçek mount testi değildir.
