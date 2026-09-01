@@ -25,7 +25,7 @@ Araştırma girişi: [README](kafka-kraft-bitnami-image-research/README.md).
 | 4 — Deploy, Pod/StatefulSet/Service, quorum | 0.2.0 temiz deploy ve üç-pod gerçek PVC/metadata denetimi GEÇTİ; quorum/mesaj testi sırada | [Deploy notları](kafka-kraft-bitnami-image-research/tests/deploy-notes.md) |
 | 4 — Topic, producer, consumer, yönetim | 0.2.0 üzerinde GEÇTİ; RF=3/minISR=2, sıralı mesaj eşleşmesi ve 1→3 partition | [Mesajlaşma](kafka-kraft-bitnami-image-research/tests/producer-consumer-test.md), [topic](kafka-kraft-bitnami-image-research/tests/topic-management-test.md) |
 | 4 — Restart/rolling davranışının gözlemi | 0.1.0 BAŞARISIZ; 0.2.0 pod replacement + aynı PVC/metadata + eski/yeni mesaj kabulü GEÇTİ | [Deploy notları](kafka-kraft-bitnami-image-research/tests/deploy-notes.md) |
-| 4/5 — Gerçek ekran görüntüleri | EKSİK; terminal metni var, gerçek görüntü yok | [İstenen görüntüler](kafka-kraft-bitnami-image-research/screenshots/README.md) |
+| 4/5 — Gerçek ekran görüntüleri | Tamamlandı; beş gerçek terminal PNG'si | [Görsel kanıtlar](kafka-kraft-bitnami-image-research/screenshots/README.md) |
 | 5 — README, karar, sonuç, kısa demo notu | Hazır | [Final README](kafka-kraft-bitnami-image-research/README.md), [seçim](kafka-kraft-bitnami-image-research/alternatives/selected-image-decision.md), [demo](kafka-kraft-bitnami-image-research/DEMO-NOTES.md) |
 
 ## Mentor kontrol listesi
@@ -40,10 +40,10 @@ Araştırma girişi: [README](kafka-kraft-bitnami-image-research/README.md).
 - [x] Gerçek deploy denemesi, topic ve producer/consumer çıktıları kaydedildi.
 - [x] Çalışmayan restart'ın teknik nedeni ve sonraki adım açıklandı.
 - [x] Sonuç ve öneri yazıldı.
-- [ ] Gün 4/5'in gerçek ekran görüntüleri teslim edildi.
+- [x] Gün 4/5'in gerçek ekran görüntüleri teslim edildi.
 - [x] İdeal çalışan demo için 0.2.0 canlı kalıcılık kabul testi geçti.
 
-İşaretli maddeler yalnız açıklanan kapsamı ifade eder. “Restart gözlemi yapıldı” ile “restart başarılı” farklıdır. Dokümandaki başarısızlık analizi yolu karşılandı; eksik ekran görüntüleri nedeniyle tüm teslim kalemleri %100 tamamlandı denemez.
+İşaretli maddeler yalnız açıklanan laboratuvar/roadmap kapsamını ifade eder. “Restart gözlemi yapıldı” ile “restart başarılı” ayrımı gerçek 0.2.0 kabul kanıtıyla kapatıldı. Mentor kontrol listesindeki bütün haftalık maddeler tamamlandı; bu production onayı değildir.
 
 ## Sonraki güvenli adım ve yetki sınırı
 

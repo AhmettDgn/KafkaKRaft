@@ -38,8 +38,8 @@ Values dosyaları birbirinin yerine kullanılmaz: image-only-override kökteki B
 - Eski 0.1.0'daki üç broker'ın tehlikeli mount düzeni teyit edildi; bu test verileri açık onayla sıfırlandı. Yeni 0.2.0 exact PVC mount audit'i geçti.
 - Roadmap, eski başarısız denemenin teknik açıklamasını korur; 0.2.0 restart kalıcılığı gerçek sunucuda PASS olmuştur.
 - amd64/arm64 manifest kontrolü çalışma testi değildir. İki mimaride canlı test, CVE scanner, SBOM/imza doğrulaması yapılmadı.
-- Gerçek ekran görüntüleri henüz sağlanmadı; terminal metni ekran görüntüsü gibi etiketlenmedi.
+- Beş gerçek terminal ekran görüntüsü [screenshots](screenshots/README.md) altında teslim edildi; sentetik görsel üretilmedi.
 - GitHub otomasyonu yoktur. Üç pod tek fiziksel sunucudadır; production HA, TLS/SASL, JMX ve dış erişim kapsam dışıdır.
 - Eski veriler taşınmadı; kullanıcı disposable test verilerinin silinmesini onayladı. Fiziksel secure erase veya geri yükleme garantisi verilmedi. [Geçiş kaydı](../IMPLEMENTATION-REPORT.md).
 
-Teknik demo hedefi tamamlandı. Kalan teslim kalemi gerçek ekran görüntüleridir. Production için TLS/SASL, dış erişim, JMX, zafiyet/SBOM/imza, yük/uzun süre ve fiziksel host arızası testleri ayrı kapsamdır.
+Teknik demo ve roadmap ekran görüntüsü teslimi tamamlandı. Production için TLS/SASL, dış erişim, JMX, zafiyet/SBOM/imza, yük/uzun süre ve fiziksel host arızası testleri ayrı kapsamdır.

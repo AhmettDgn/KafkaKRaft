@@ -1,20 +1,33 @@
-# Gerçek ekran görüntüsü teslimi — bekliyor
+# Gerçek ekran görüntüsü teslimi — tamamlandı
 
-Kullanıcı terminal çıktıları sağladı; bu klasöre henüz gerçek ekran görüntüsü eklenmedi. Metinlerden üretilmiş görseller gerçek sunucu ekran görüntüsü gibi sunulmayacak.
+Teslim tarihi: 2026-09-01. Kullanıcının gerçek Contabo terminalinden sağlanan beş PNG dosyası bu klasöre özgün çözünürlükte kopyalandı. Sentetik görsel üretilmedi veya görüntü içeriği düzenlenmedi.
 
-Roadmap Gün 1 için komut çıktısını da kabul eder; [repo ağacı ve komut](../chart-analysis/kraft-architecture.md) mevcut. Gün 4/5 ayrıca gerçek deploy/test ekran görüntülerini ister.
+Görsel incelemede parola, token, private key veya kubeconfig içeriği görülmedi. Host adı, cluster içi IP'ler, PVC/PV kimlikleri ve Kafka cluster ID görünür; bunlar authentication credential değildir ancak altyapı metadata'sıdır. Public repository için kullanıcı tarafından sağlanan kanıt olarak korunmuştur.
 
-## Eklenecek kanıtlar
+## Teslim edilen kanıtlar
 
-| Önerilen dosya | Görünmesi gereken | Durum |
-| --- | --- | --- |
-| 01-chart-tree.png | Repo/chart ağacı | İsteğe bağlı; Gün 1 komut kanıtı mevcut |
-| 02-pods-pvc-services.png | Namespace, üç pod, üç PVC, StatefulSet ve Service | Eksik |
-| 03-quorum-topic.png | Quorum ve topic describe / replication / ISR | Eksik |
-| 04-producer-consumer.png | Mesaj gönderme/okuma sonucu | Eksik |
-| 05-restart-failure-audit.png | Gerçek eski restart FAIL ve/veya mevcut read-only audit çıktısı | Eksik |
-| 06-fixed-restart.png | 0.2.0 başarılı kalıcılık kabulü | Test geçti; gerçek ekran görüntüsü eksik |
+| Dosya | Boyut | Görsel kanıt | Durum |
+| --- | ---: | --- | --- |
+| [01-chart-tree.png](01-chart-tree.png) | 567×370 | Checkout SHA `430f8cb...` ve bağımsız `lab/kafka-apache` chart dosyaları | Teslim edildi |
+| [02-pods-pvc-services.png](02-pods-pvc-services.png) | 1747×516 | Helm `kafka-apache-lab-0.2.0`, revision 1; üç Running pod, üç Bound PVC, StatefulSet 3/3, iki Service ve sabit ASF image digest'i | Teslim edildi |
+| [03-storage-audit.png](03-storage-audit.png) | 1797×279 | Üç pod için exact `/var/lib/kafka/data` PVC mount/metadata PASS; read-only audit PASS | Teslim edildi |
+| [04-quorum.png](04-quorum.png) | 1832×336 | KRaft leader, voters 0/1/2, observer yok, max follower lag 0 | Teslim edildi |
+| [05-producer-consumer-restart.png](05-producer-consumer-restart.png) | 957×457 | Topic, üç mesaj, aynı PVC/kimlikler, restart sonrası dört mesaj ve replacement pod persistence PASS | Teslim edildi |
 
-Her gerçek görüntü için tarih/saat, komut, source SHA, chart sürümü ve sonucun eski/yeni kuruluma ait olduğunu yazın. Password/token/private key/kubeconfig içeriği gösterilmemeli. Maskelenmiş alanları “maskelendi” diye not edin; test sonucunu değiştirmeyin.
+![Chart tree](01-chart-tree.png)
 
-Sırf ekran görüntüsü almak için tekrar pod restart etmeyin veya veri silmeyin. Mevcut başarılı 0.2.0 terminal geçmişinin gerçek görüntüsü kullanılabilir; geçmiş mevcut değilse eski çıktı yeniden çalıştırılmış gibi gösterilmemeli. Salt-okunur güncel durum için `kubectl get pods,pvc,sts,svc -n kafka-lab` ve `bash scripts/lab/storage-audit.sh` kullanılabilir.
+![Pods PVC services](02-pods-pvc-services.png)
+
+![Storage audit](03-storage-audit.png)
+
+![KRaft quorum](04-quorum.png)
+
+![Producer consumer restart](05-producer-consumer-restart.png)
+
+## Sınırlar
+
+- Görseller, ilgili komutların görünen terminal çıktısıdır; altta kalan tüm komut geçmişinin veya cluster'ın güvenlik durumunun kanıtı değildir.
+- Quorum ekranı leader 0 / epoch 3 / lag 0 ile daha sonraki sağlıklı anı gösterir; önceki smoke çıktısındaki leader 1 ile çelişmez, leader değişebilir.
+- Producer/consumer görseli smoke raporunun seçili PASS satırlarını gösterir. Tam ham metin sonuçları [producer/consumer](../tests/producer-consumer-test.md), [topic](../tests/topic-management-test.md) ve [işlem raporunda](../../IMPLEMENTATION-REPORT.md) kayıtlıdır.
+- Bu kanıt tek-host laboratuvarı içindir; production HA, TLS/SASL, CVE taraması veya backup/restore onayı değildir.
+- Tekrar ekran görüntüsü almak için pod restart/veri silme gerekmez. Güncel salt-okunur kontrol yeterlidir.

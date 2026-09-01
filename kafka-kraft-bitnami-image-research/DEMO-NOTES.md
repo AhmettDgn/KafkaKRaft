@@ -50,11 +50,11 @@ Audit'in üç broker için exact PVC/metadata PASS vermesi beklenir. Eski 0.1.0 
 
 “Apache image + bağımsız chart uygulanabilir; salt image override yeterli değildir. 0.1.0 kalıcılık hatası bulundu; 0.2.0 temiz deploy, exact PVC audit, mesajlaşma ve pod replacement kalıcılık kabulü geçti.”
 
-Kalan staj teslimi gerçek ekran görüntüleridir. Üç pod tek sunucuda fiziksel HA sağlamaz. TLS/SASL/JMX, güvenlik taraması ve production migration kapsam dışıdır.
+Beş gerçek terminal ekran görüntüsü teslim edildi. Üç pod tek sunucuda fiziksel HA sağlamaz. TLS/SASL/JMX, güvenlik taraması ve production migration kapsam dışıdır.
 
 ## Muhtemel mentor soruları
 
 - Neden eski chart'a sadece image yazmadın? prepare-config Bitnami libkafka.sh çağırıyor; Apache imajı bu sözleşmeyi sağlamıyor.
 - Helm geçtiyse neden hata çıktı? Helm dosyaları render eder; containerd gerçek mount düzenini veya Kafka veri kalıcılığını test etmez.
 - Her alternatif iki mimaride test edildi mi? Hayır; üç adayın manifestleri kontrol edildi, canlı çift mimari testi yapılmadı.
-- Çalışma tamam mı? Teknik araştırma ve ideal demo kabulü tamamlandı. Gerçek ekran görüntüleri hâlâ eksik; production uygunluğu kapsam dışıdır.
+- Çalışma tamam mı? Haftalık teknik araştırma, ideal demo kabulü ve ekran görüntüsü teslimi tamamlandı; production uygunluğu kapsam dışıdır.

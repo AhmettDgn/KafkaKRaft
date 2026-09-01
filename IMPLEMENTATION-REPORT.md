@@ -400,3 +400,14 @@ Cluster-ID ve uzun TopicId raporda tekrar edilmedi; bunlar credential değildir 
 - Commit: `84419272035a427ea81b7595a74ca18a4edaa659` — `Record successful Kafka 0.2 persistence acceptance`; 10 dosya, 284 ekleme / 32 silme.
 - `git push origin main`: başarılı, `430f8cb..8441927 main -> main`. Sonraki `git ls-remote origin refs/heads/main` aynı tam SHA'yı döndürdü.
 - Bu sonuç bölümü ayrı rapor takip commit'inde saklanır. Push sunucuda otomatik deploy çalıştırmaz; çalışan Kafka release'in deploy kaynağı 0c0c5ce ve kalıcılık test kaynağı 430f8cb olarak kalır. GitHub otomasyonu yoktur.
+
+## 2026-09-01 — Gerçek ekran görüntüsü teslimi
+
+- Kullanıcı beş gerçek Contabo terminal PNG'si sağladı. Görseller talimat belgesi değil, önceki çalıştırmaların görsel kanıtı olarak ele alındı; içerikleri görsel olarak incelendi.
+- Dosyalar özgün binary içeriği ve çözünürlükleri korunarak `kafka-kraft-bitnami-image-research/screenshots/` altına kopyalandı: `01-chart-tree.png` (567×370), `02-pods-pvc-services.png` (1747×516), `03-storage-audit.png` (1797×279), `04-quorum.png` (1832×336), `05-producer-consumer-restart.png` (957×457).
+- Kaynak/dosya SHA-256 sırasıyla: `75E525291177CEFEE9C2DD62327674F12433233FC76D814DD47AF16F71C2228A`, `77A6CE78E582441228FCC42527FA4BCDA3312DCDD1E2FF93D853FD6C4E4DEABE`, `CEC316A487D8842113FBF757C8F7C435E0A6F7EE9436D0C245D618CDE6833C5F`, `1F3A7C49D5E486AE1B8E86D82D0A6626A060D382D3AD9EBBC5511AC0B774492A`, `B0295128222D45E8E63B81840EE26EBDC450E318ED676ADA83036595DEC98204`.
+- Görsellerde parola, token, private key veya kubeconfig içeriği görülmedi. Host adı, cluster içi IP/PVC/PV ve Kafka cluster-ID altyapı metadata'sı görünür; credential değildir. Görseller düzenlenmedi, maskelenmedi veya sentetik olarak üretilmedi.
+- Kanıt eşlemesi: repo/chart ağacı; Helm chart 0.2.0 + revision 1 ve üç pod/PVC/StatefulSet/Service; üç-pod exact storage audit PASS; voters 0/1/2 ve follower lag 0 quorum; topic/producer-consumer/PVC identity/pod replacement PASS özeti.
+- Quorum görselindeki leader 0 / epoch 3, daha önceki smoke metnindeki leader 1 / epoch 2'den sonraki sağlıklı bir durumdur; controller leader değişimi tek başına hata değildir. High watermark artışı da sonraki metadata işlemleriyle uyumludur; yük testi olarak yorumlanmadı.
+- `screenshots/README.md` gerçek dosya linkleri, boyutları ve kanıt/sınır tablosuyla yenilendi. Roadmap ekran görüntüsü maddesi, araştırma README ve demo notları tamamlandı olarak güncellendi. Tekrar deploy/restart yapılmadı; sunucuda hiçbir mutation çalıştırılmadı.
+- Bu turda chart/script kodu değiştirilmedi. Belge/link testi, whitespace, binary hash ve staged secret-pattern kontrolleri commit öncesinde çalıştırılacak; commit/push sonucu ayrıca kaydedilecek.
