@@ -13,11 +13,11 @@ KRaft, Kafka cluster metadata'sının Kafka controller quorum'u tarafından Raft
 Repo kökünden:
 
 ```bash
-git ls-files Chart.yaml Chart.lock templates charts lab/kafka-apache
+git ls-files legacy/bitnami-kafka lab/kafka-apache
 ```
 
 ```text
-Chart.yaml / Chart.lock / templates/ / charts/  eski Bitnami chart (korundu)
+legacy/bitnami-kafka/                       eski Bitnami chart ve upstream belgeleri (korundu)
 lab/kafka-apache/                              bağımsız Apache demo chart
   Chart.yaml, values.yaml, values.schema.json
   templates/                                  StatefulSet, Service, ConfigMap, PDB, NetworkPolicy
@@ -27,7 +27,7 @@ scripts/lab/                                   mesaj/restart testi ve salt-okunu
 kafka-kraft-bitnami-image-research/             haftalık araştırma/teslim belgeleri
 ```
 
-Bu çıktı/dizin özeti gerçek repo dosyalarından türetilmiştir, terminal ekran görüntüsü değildir. Roadmap Gün 1'de izin verilen komut çıktısı biçimini karşılar.
+Bu güncel dizin özeti gerçek repo dosyalarından türetilmiştir. Eski chart, final temizlikte `legacy/` altına taşındı; içeriği silinmedi. Roadmap Gün 1'de izin verilen komut çıktısı ve teslim edilen ekran görüntüsü, bağımsız `lab/kafka-apache` ağacını ayrıca doğrular.
 
 2026-08-31 tarihinde çalıştırılan `git ls-files lab/kafka-apache` komutunun gerçek çıktısı:
 

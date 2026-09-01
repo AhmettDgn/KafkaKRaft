@@ -4,8 +4,8 @@
 
 | Dosya | Hedef chart | Amaç |
 | --- | --- | --- |
-| original-values.yaml | Kökteki Bitnami chart | Orijinal image alanlarının referans alt kümesi; tam deploy values değildir |
-| image-only-override.yaml | Kökteki Bitnami chart + values-template.yaml | **Yalnız offline negatif deney:** ASF image'a geçince hard-coded Bitnami scriptlerinin kaldığını gösterir |
+| original-values.yaml | `legacy/bitnami-kafka` | Orijinal image alanlarının referans alt kümesi; tam deploy values değildir |
+| image-only-override.yaml | `legacy/bitnami-kafka` + kendi values-template.yaml dosyası | **Yalnız offline negatif deney:** ASF image'a geçince hard-coded Bitnami scriptlerinin kaldığını gösterir |
 | non-bitnami-values.yaml | lab/kafka-apache 0.2.0 | Seçilen Apache image/digest, 3 pod ve storage için gerçek schema-uyumlu override |
 
 Önceki placeholder kurum-image taslağı gerçek uygulanabilir lab values ile değiştirildi. Kurum registry'sinde image build/yayını yapılmış gibi gösterilmiyor. Eski 0.1.0 canlı cluster için bu dosyayı doğrudan deploy etmeyin; [storage recovery](../../deploy/contabo/STORAGE-RECOVERY.md) engeli geçerlidir.
@@ -13,9 +13,9 @@
 ## Image-only deney
 
 ```bash
-helm lint . --strict -f values-template.yaml \
+helm lint legacy/bitnami-kafka --strict -f legacy/bitnami-kafka/values-template.yaml \
   -f kafka-kraft-bitnami-image-research/helm-values/image-only-override.yaml
-helm template image-only . -n kafka-lab -f values-template.yaml \
+helm template image-only legacy/bitnami-kafka -n kafka-lab -f legacy/bitnami-kafka/values-template.yaml \
   -f kafka-kraft-bitnami-image-research/helm-values/image-only-override.yaml
 ```
 

@@ -5,11 +5,11 @@ Ortam: yerel Windows, Helm v3.21.4, Python/PyYAML. Komutlar repository kökünde
 ## 1. Orijinal chart + yalnız image override
 
 ```bash
-helm lint . --strict -f values-template.yaml -f kafka-kraft-bitnami-image-research/helm-values/image-only-override.yaml
-helm template kafka-lab . -n kafka-lab -f values-template.yaml -f kafka-kraft-bitnami-image-research/helm-values/image-only-override.yaml
+helm lint legacy/bitnami-kafka --strict -f legacy/bitnami-kafka/values-template.yaml -f kafka-kraft-bitnami-image-research/helm-values/image-only-override.yaml
+helm template kafka-lab legacy/bitnami-kafka -n kafka-lab -f legacy/bitnami-kafka/values-template.yaml -f kafka-kraft-bitnami-image-research/helm-values/image-only-override.yaml
 ```
 
-Lint GEÇTİ: 1 chart, 0 failed. Kök values.yaml bulunmaması INFO; açık values-template.yaml kullanıldı.
+Lint GEÇTİ: 1 chart, 0 failed. Legacy chart'ta varsayılan values.yaml bulunmaması INFO; açık values-template.yaml kullanıldı.
 Render GEÇTİ. Root common helper digest verildiğinde tag'i atlar; image alanı:
 
 ```text
@@ -44,7 +44,7 @@ test_delivery_files_and_local_links ... ok
 test_original_chart_image_only_is_not_runtime_port ... ok
 Ran 3 tests
 OK
-ROOT image-only experiment: /opt/bitnami=4, libkafka.sh=1, KAFKA_CFG_=1
+LEGACY image-only experiment: /opt/bitnami=4, libkafka.sh=1, KAFKA_CFG_=1
 ```
 
 Otomatik tekrar: [tests/test_roadmap.py](../../tests/test_roadmap.py); [scripts/validate.sh](../../scripts/validate.sh) bu üç testi de çalıştırır. Dosya/link testi belge varlığını kontrol eder; ekran görüntülerinin mevcut olduğunu veya belgelerdeki her iddianın bağımsız doğrulandığını kanıtlamaz.

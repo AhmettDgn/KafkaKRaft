@@ -4,7 +4,7 @@
 
 0.1.0 chart'ta **kritik veri kalıcılığı hatası** doğrulandı. PVC parent mount'u, Apache image-defined child volume tarafından örtülüyordu. 0.2.0 düzeltmesi ve fail-closed kontrolleri yazıldı. Eski canlı cluster'a otomatik upgrade **engellendi**. Kullanıcının eski test verilerini silme onayıyla temiz 0.2.0 kuruldu; exact PVC/metadata audit ve pod replacement sonrası eski/yeni mesaj kalıcılığı gerçek sunucuda geçti. Bu production hazır anlamına gelmez.
 
-Bu denetim yeni `lab/kafka-apache` chart'ının bütün template/helper/values/startup dosyalarını, deploy/bootstrap/smoke scriptlerini, namespace RBAC'ını ve kökteki eski chart ile birlikte bulunma durumunu kapsar. Eski Bitnami chart yeniden geliştirilmedi; onun tüm production özelliklerine güvenlik sertifikasyonu yapılmadı.
+Bu denetim yeni `lab/kafka-apache` chart'ının bütün template/helper/values/startup dosyalarını, deploy/bootstrap/smoke scriptlerini, namespace RBAC'ını ve `legacy/bitnami-kafka` altında korunan eski chart'ı kapsar. Eski Bitnami chart yeniden geliştirilmedi; onun tüm production özelliklerine güvenlik sertifikasyonu yapılmadı.
 
 ## Bulgular ve yapılanlar
 
@@ -35,7 +35,7 @@ Bu denetim yeni `lab/kafka-apache` chart'ının bütün template/helper/values/s
 | Bootstrap | Idempotent Secret/config koruması, mevcut servisi otomatik devralmama, shared primary-group reddi. Root sadece bootstrap. K3s/Helm sürümleri sabit. Sunucudaki apt kaynakları kubectl 1.30 olasılığını gösteriyor, gerçek client sürümü ayrıca okunmalı; başarılı API çağrısı resmi version-skew desteğini kanıtlamaz. |
 | Helm v3 davranışı | Lint/template lookup sunucuya bağlanmadığında legacy detection yapamaz; online Helm upgrade helper ve deploy runtime audit ayrı katmandır. Raw kubectl/yönetici müdahalesi korumaları aşabilir; annotation değişikliği güvenli migration değildir. |
 | Kaynak/raporlama | GitHub workflow yok. Kaynak pull cluster'ı değiştirmez. Deploy temiz checkout + SHA raporlar. Runtime snapshot'larda kimlik değerleri yerine hash tutulur; mount kaynağı/PVC ID gizli credential değildir ama altyapı bilgisi içerir. |
-| Eski Bitnami chart | Kökte version 32.4.4, common 2.31.4 bağımlılığı korunuyor. Yeni chart dependencies içermez; `lab.*` helpers eski `kafka.*`/`common.*` ile karışmaz. Yeni deploy yalnız `lab/kafka-apache` kullanır; eski values uyumlu değildir. İki chart aynı namespace/release adıyla kurulmaz. |
+| Eski Bitnami chart | `legacy/bitnami-kafka` altında version 32.4.4, common 2.31.4 bağımlılığı korunuyor. Yeni chart dependencies içermez; `lab.*` helpers eski `kafka.*`/`common.*` ile karışmaz. Yeni deploy yalnız `lab/kafka-apache` kullanır; eski values uyumlu değildir. İki chart aynı namespace/release adıyla kurulmaz. |
 | Kök paketleme | `.helmignore` lab/scripts/tests/deploy/artifacts'ı eski chart paketinden çıkarır. Yeni rapor ve audit belgesi de paket dışına alınır. Eski template/value dosyaları değiştirilmez. |
 
 ## Kontrol edilen dosyalar

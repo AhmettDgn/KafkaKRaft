@@ -5,6 +5,10 @@ deploy/contabo/values-production.yaml
 *.pem
 
 # Local Helm artifacts
+/bin/
+/helm.zip
+/original-render.yaml
+/non-bitnami-render.yaml
 charts/*.tgz.tmp
 *.tgz.tmp
 /artifacts/

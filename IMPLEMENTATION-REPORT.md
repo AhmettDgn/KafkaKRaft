@@ -420,3 +420,36 @@ Cluster-ID ve uzun TopicId raporda tekrar edilmedi; bunlar credential değildir 
 - Commit: `93659d0e268244c163d525c583d0751592fced1e` — `Add Kafka deployment evidence screenshots`; beş PNG + beş Markdown dosyası.
 - `git push origin main`: başarılı, `1add46b..93659d0 main -> main`. `git ls-remote origin refs/heads/main` aynı tam SHA'yı döndürdü.
 - Bu final Git sonucu ayrı rapor takip commit'inde tutulur. Push sunucuda deploy çalıştırmadı. Teknik roadmap ve gerçek ekran görüntüsü teslimi tamamlandı; production kapsamı hâlâ ayrı ve onaylanmış değildir.
+
+## 2026-09-01 — Repository yapı sadeleştirmesi
+
+### İnceleme sonucu ve koruma kararı
+
+- Kullanıcı repository ağacının karışık ve gereksiz öğeler içermemesini istedi. `git status`, bütün tracked dosyalar, kök dizin, en büyük dosyalar, Git object durumu, dosya referansları/tarihçesi ve exact SHA-256 duplicate grupları incelendi. Başlangıç çalışma ağacı temizdi.
+- İki ana karışıklık bulundu: kullanılan bağımsız chart ile eski Bitnami chart aynı kök seviyede görünüyordu; ayrıca kaynak olmayan Helm Windows dağıtımı/ZIP'i ve iki üretilmiş render çıktısı Git'te izleniyordu.
+- Eski Bitnami chart gereksiz sayılıp silinmedi. Roadmap image envanteri, image-only negatif render deneyi ve kaynak karşılaştırması için gereklidir. Bütün orijinal chart içeriği/upstream dokümanı `legacy/bitnami-kafka/` altında izole edildi. Kullanılan chart yolu `lab/kafka-apache`, deploy/smoke/storage script yolları ve sunucudaki Helm release değişmedi.
+- Araştırma, test kanıtı ve ekran görüntüsü dosyaları roadmap'in açık teslimleridir; tekrar gibi görünseler de ayrı amaçları olduğundan korundu. `IMPLEMENTATION-REPORT.md` kronolojik işlem kaydı gereksinimi nedeniyle kısaltılmadı. Vendored `charts/common-2.31.4.tgz`, yalnız legacy chart'ın offline render bağımlılığı olduğundan legacy dizini içinde korundu.
+
+### Taşınan ve kaldırılan öğeler
+
+- `Chart.yaml`, `Chart.lock`, `templates/`, `charts/`, `values-template.yaml`, `values/`, `.helmignore`, upstream `CHANGELOG.md` ve uzun upstream `README.md` → `legacy/bitnami-kafka/`. Move öncesi kaynakların ve hedefin absolute path'lerinin çalışma alanı içinde olduğu doğrulandı. Upstream README'den yalnız projeye sonradan eklenen 31 satırlık aktif-lab girişi çıkarıldı; Bitnami içeriği korundu.
+- Kök `README.md` kısa proje girişi olarak yeniden oluşturuldu: aktif chart, kurulum, test/rapor ve legacy sınırı tek tabloda/ağaçta açıklandı.
+- Git'ten kaldırılan üretilmiş/araç dosyaları: `helm.zip` (17,913,267 bayt), `bin/windows-amd64/helm.exe` (59,596,288), dağıtım LICENSE/README (15,072), `original-render.yaml` (33,740) ve `non-bitnami-render.yaml` (58,586). Toplam tracked checkout azalması **77,616,953 bayt (~74.0 MiB)**. Bunlar Git geçmişinden fiziksel olarak purge edilmedi; eski commitlerden geri alınabilir. History rewrite yapılmadı.
+- `.gitignore` içine `/bin/`, `/helm.zip`, `/original-render.yaml`, `/non-bitnami-render.yaml` eklendi; tekrar yanlışlıkla commit edilmeleri engellendi. `artifacts/` zaten ignored; burada 15 yerel test aracı/çıktısı, yaklaşık 116.7 MiB bulundu. Bunlar GitHub'a dahil değildir ve mevcut doğrulama araçlarını/kanıtlarını korumak için yerel çalışma alanından silinmedi.
+- Boş/untracked `.github/workflows` dizini Git içeriği değildir; GitHub otomasyonu hâlâ yoktur. Gereksiz yeni yapı/özet belgesi eklenmedi.
+
+### Referans ve test düzeltmeleri
+
+- `tests/test_chart.py` ve `tests/test_roadmap.py`, repository içi Windows executable yerine `HELM_BIN` veya PATH'teki `helm` kullanır. Böylece platform binary'si kaynak deposuna gömülmez. Yeni test, root'ta Chart/templates bulunmadığını ve legacy chart'ın gerekli Chart/lock/templates bileşenleriyle izole olduğunu doğrular.
+- Root image-only deneyi `legacy/bitnami-kafka` yoluna taşındı. Araştırma README, architecture/image-dependency notları, values diff, render kanıtı ve demo komutları yeni yolu kullanacak şekilde güncellendi. Test çıktısı etiketi `ROOT image-only` yerine `LEGACY image-only` oldu.
+- Aktif chart README'deki eski “0.2.0 canlı restart yapılmadı” ifadesi güncel gerçek PASS sonucuyla düzeltildi; amd64 canlı runtime ile arm64 manifest-only/zafiyet taraması sınırları ayrıldı.
+- Root belge link testi README, roadmap, chart audit, aktif chart README ve Contabo README'yi de kapsayacak şekilde genişletildi. Legacy upstream README kasıtlı olarak proje link-regresyonuna dahil edilmedi; kendi upstream dokümanıdır.
+
+### Doğrulama ve etki
+
+- `HELM_BIN=<ignored Helm 3.21.4> PYTHON_BIN=python bash scripts/validate.sh`: GEÇTİ. 7 chart + 10 storage + 3 roadmap = **20 Python testi**; 12 mock startup; 4 mock cluster-ID; Bash syntax; aktif chart strict lint.
+- `helm lint legacy/bitnami-kafka --strict -f legacy/bitnami-kafka/values-template.yaml`: GEÇTİ; varsayılan values.yaml yok INFO mesajı beklenen durum.
+- Legacy image-only gerçek render testi geçti ve beklenen vendor sözleşmelerini buldu; aktif chart testleri Bitnami pattern'i içermedi.
+- `git diff --check`: GEÇTİ. Exact duplicate taramasında tracked dosyalar arasında aynı SHA-256 içeriğe sahip gereksiz kopya bulunmadı.
+- Sunucuya bağlanılmadı; çalışan Kafka release'e deploy/restart/mutation yapılmadı. Sunucu kullanımı için `lab/kafka-apache`, `scripts/` ve `deploy/` yolları aynı kaldı. Sadece repository kökündeki eski chart komutları artık `legacy/bitnami-kafka` yolunu kullanır.
+- Bu yapı/temizlik değişiklikleri henüz commit/push edilmedi; Git sonucu takip kaydında yazılacak.

@@ -19,7 +19,7 @@ Göster: [tablo](alternatives/image-comparison.md), [manifest](alternatives/mani
 Repository kökünde, offline; cluster'a hiçbir şey göndermez:
 
 ```bash
-helm template kafka-lab . -f values-template.yaml -f kafka-kraft-bitnami-image-research/helm-values/image-only-override.yaml | grep -E 'libkafka.sh|KAFKA_CFG_'
+helm template kafka-lab legacy/bitnami-kafka -f legacy/bitnami-kafka/values-template.yaml -f kafka-kraft-bitnami-image-research/helm-values/image-only-override.yaml | grep -E 'libkafka.sh|KAFKA_CFG_'
 helm lint lab/kafka-apache --strict -f kafka-kraft-bitnami-image-research/helm-values/non-bitnami-values.yaml
 bash scripts/validate.sh
 ```

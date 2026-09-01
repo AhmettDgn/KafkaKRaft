@@ -2,7 +2,7 @@
 
 ## Kapsam ve yöntem
 
-`Chart.yaml`, `values-template.yaml`, ortam values dosyası ve bütün `templates/` dosyaları tarandı. Aşağıdaki envanter chart'ın gerçek render davranışını ifade eder; yalnızca Chart annotation'larına dayanmaz.
+`legacy/bitnami-kafka` altındaki `Chart.yaml`, `values-template.yaml`, ortam values dosyası ve bütün `templates/` dosyaları tarandı. Aşağıdaki envanter chart'ın gerçek render davranışını ifade eder; yalnızca Chart annotation'larına dayanmaz.
 
 ## Image envanteri
 
@@ -17,7 +17,7 @@
 
 ## Bitnami dışı bağımlılık
 
-`Chart.yaml`, `common` bağımlılığını `oci://registry-1.docker.io/bitnamicharts` konumundan ve `2.x.x` sürüm aralığından tanımlar; `Chart.lock` 2.31.4'e sabitler. Bu image bağımlılığı değildir. Vendored library zaten repodaysa her render/deploy registry'ye erişmek zorunda değildir; ancak kaynak/güncelleme tedarik zinciri hâlâ Bitnami kökenlidir. Yeni `lab/kafka-apache` library bağımlılığı olmadan yerel helper kullanır; kökteki orijinal chart değiştirilmedi.
+Legacy `Chart.yaml`, `common` bağımlılığını `oci://registry-1.docker.io/bitnamicharts` konumundan ve `2.x.x` sürüm aralığından tanımlar; `Chart.lock` 2.31.4'e sabitler. Bu image bağımlılığı değildir. Vendored library zaten repodaysa her render/deploy registry'ye erişmek zorunda değildir; ancak kaynak/güncelleme tedarik zinciri hâlâ Bitnami kökenlidir. Yeni `lab/kafka-apache` library bağımlılığı olmadan yerel helper kullanır; orijinal chart içeriği `legacy/bitnami-kafka` altında korunur.
 
 ## Mevcut değer katmanı
 

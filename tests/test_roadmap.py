@@ -9,7 +9,8 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 RESEARCH = ROOT / "kafka-kraft-bitnami-image-research"
-HELM = os.environ.get("HELM_BIN", str(ROOT / "bin/windows-amd64/helm.exe") if os.name == "nt" else "helm")
+LEGACY = ROOT / "legacy/bitnami-kafka"
+HELM = os.environ.get("HELM_BIN", "helm")
 
 
 def template(chart, *values):
@@ -37,7 +38,10 @@ class RoadmapTests(unittest.TestCase):
             with self.subTest(file=name):
                 self.assertTrue((RESEARCH / name).is_file())
         # Presence is not a semantic review or evidence that screenshots/tests exist.
-        for path in [ROOT / "ROADMAP-COMPLIANCE.md", *RESEARCH.rglob("*.md")]:
+        project_docs = [ROOT / name for name in
+                        ["README.md", "ROADMAP-COMPLIANCE.md", "CHART-AUDIT.md",
+                         "lab/kafka-apache/README.md", "deploy/contabo/README.md"]]
+        for path in [*project_docs, *RESEARCH.rglob("*.md")]:
             text = path.read_text(encoding="utf-8")
             for target in re.findall(r"\]\(([^)]+)\)", text):
                 if "://" in target or target.startswith("#"):
@@ -46,7 +50,7 @@ class RoadmapTests(unittest.TestCase):
                     self.assertTrue((path.parent / target.split("#")[0]).exists())
 
     def test_original_chart_image_only_is_not_runtime_port(self):
-        text = template(ROOT, ROOT / "values-template.yaml",
+        text = template(LEGACY, LEGACY / "values-template.yaml",
                         RESEARCH / "helm-values/image-only-override.yaml")
         # Bitnami common renders repository@digest (tag omitted when digest is set).
         selected = yaml.safe_load((RESEARCH / "helm-values/image-only-override.yaml").read_text())["image"]
@@ -55,7 +59,7 @@ class RoadmapTests(unittest.TestCase):
         self.assertIn("KAFKA_CFG_", text)
         self.assertIn("/opt/bitnami/kafka", text)
         # This is the EXPECTED negative finding: YAML rendering is not runtime compatibility.
-        print("ROOT image-only experiment: " + ", ".join(
+        print("LEGACY image-only experiment: " + ", ".join(
             f"{pattern}={text.count(pattern)}" for pattern in
             ["/opt/bitnami", "libkafka.sh", "KAFKA_CFG_"]))
 

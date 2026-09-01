@@ -6,7 +6,7 @@ Madde bazında teslim durumu: [ROADMAP-COMPLIANCE.md](../ROADMAP-COMPLIANCE.md).
 
 ## Araştırma sorusunun cevabı
 
-Apache Kafka image'ı ile Bitnami'den bağımsız KRaft demo kurulabilir; yalnız image repository/tag değiştirmek mevcut chart'ın Bitnami script/entrypoint/path bağımlılıklarını kaldırmaz. Bu nedenle kökteki orijinal chart korundu, [lab/kafka-apache](../lab/kafka-apache) bağımsız chart'ı geliştirildi. Seçim Apache Kafka 4.0.2'nin digest ile sabitlenmiş ASF image'ıdır; kurum image'ı henüz build edilmedi.
+Apache Kafka image'ı ile Bitnami'den bağımsız KRaft demo kurulabilir; yalnız image repository/tag değiştirmek mevcut chart'ın Bitnami script/entrypoint/path bağımlılıklarını kaldırmaz. Bu nedenle orijinal chart [legacy/bitnami-kafka](../legacy/bitnami-kafka) altında korundu, [lab/kafka-apache](../lab/kafka-apache) bağımsız chart'ı geliştirildi. Seçim Apache Kafka 4.0.2'nin digest ile sabitlenmiş ASF image'ıdır; kurum image'ı henüz build edilmedi.
 
 Sunucudaki 0.1.0 denemesinde deploy ve mesajlaşma geçti; restart ise image VOLUME alt mount'u PVC'yi örttüğü için başarısız oldu. Kullanıcının eski test verilerini silme onayından sonra temiz 0.2.0 deploy edildi: üç yeni PVC doğrudan `/var/lib/kafka/data` yolunda. Pod 0 replacement sonrasında üç PVC/PV kaynağı ve Kafka kimlikleri değişmedi; eski üç mesaj okundu ve yeni dördüncü mesaj yazılıp okundu. 0.2.0 kalıcılık kabulü geçti.
 
@@ -30,7 +30,7 @@ helm lint lab/kafka-apache --strict -f kafka-kraft-bitnami-image-research/helm-v
 helm template kafka-lab lab/kafka-apache -n kafka-lab -f kafka-kraft-bitnami-image-research/helm-values/non-bitnami-values.yaml
 ```
 
-Values dosyaları birbirinin yerine kullanılmaz: image-only-override kökteki Bitnami chart için negatif uyumluluk deneyidir; non-bitnami-values yalnız yeni bağımsız chart içindir. Ayrıntılar [diff-notes](helm-values/diff-notes.md).
+Values dosyaları birbirinin yerine kullanılmaz: image-only-override `legacy/bitnami-kafka` için negatif uyumluluk deneyidir; non-bitnami-values yalnız yeni bağımsız chart içindir. Ayrıntılar [diff-notes](helm-values/diff-notes.md).
 
 ## Sonuçların sınırları
 

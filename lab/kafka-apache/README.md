@@ -1,12 +1,12 @@
 # Apache Kafka KRaft test chart
 
-> Sürüm 0.2.0 kalıcılık düzeltmesi içerir. 0.1.0 kurulumları doğrudan upgrade edilemez; [kontrollü kurtarma rehberi](../../deploy/contabo/STORAGE-RECOVERY.md) gerekir. Yeni sürümün canlı sunucu restart testi henüz yapılmadı.
+> Sürüm 0.2.0 kalıcılık düzeltmesi içerir. 0.1.0 kurulumları doğrudan upgrade edilemez; [kontrollü kurtarma rehberi](../../deploy/contabo/STORAGE-RECOVERY.md) gerekir. Temiz 0.2.0 deploy, exact PVC audit ve pod replacement sonrası kalıcılık testi gerçek sunucuda geçti.
 
-Bağımsız chart; Bitnami helper, script, image veya dependency içermez. Kökteki Bitnami chart ayrı ve korunmuştur.
+Bağımsız chart; Bitnami helper, script, image veya dependency içermez. Eski Bitnami chart `legacy/bitnami-kafka` altında ayrı ve korunmuştur.
 
 ## Sözleşme
 
-- Apache Kafka `4.0.2`, OCI index digest `sha256:836cafdad9f4825880d7cf1d5a21202915ae2527bd0ef1c3600c526ed7814d1f`; linux/amd64 ve linux/arm64. Registry manifest kontrolü yapıldı; container/runtime ve zafiyet taraması henüz yapılmadı.
+- Apache Kafka `4.0.2`, OCI index digest `sha256:836cafdad9f4825880d7cf1d5a21202915ae2527bd0ef1c3600c526ed7814d1f`; linux/amd64 ve linux/arm64. Registry manifest ve amd64 canlı runtime testleri geçti; arm64 canlı runtime ve zafiyet taraması yapılmadı.
 - Varsayılan 3 birleşik broker/controller; static quorum. İlk kurulumda `replicaCount=1` ayrı küçük lab için desteklenir, sonradan 1↔3 dönüşümü desteklenmez. Helm upgrade mevcut replica sayısını kontrol eder; disk kimlik kaydı topoloji değişimini engeller.
 - Yeni cluster için dışarıdan, aynı namespace'te `existingClusterIdSecret` adında Secret ve `cluster-id` anahtarı gerekir. 22 karakter base64url Kafka kimliği bütün node'larda aynıdır. Chart Secret üretmez ve her render'da kimlik değiştirmez.
 - PVC doğrudan `/var/lib/kafka/data` üzerine mount edilir; Kafka log ve metadata dizini `/var/lib/kafka/data/kraft` olur. Apache imajındaki diğer iki VOLUME yolu (`/etc/kafka/secrets`, `/mnt/shared/config`) açık readonly emptyDir mount'larıyla kaplanır; kullanılmayan bu yollar için gizli containerd volume oluşmaz.

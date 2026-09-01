@@ -7,7 +7,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-HELM = os.environ.get("HELM_BIN", str(ROOT / "bin/windows-amd64/helm.exe") if os.name == "nt" else "helm")
+HELM = os.environ.get("HELM_BIN", "helm")
 CHART = ROOT / "lab/kafka-apache"
 
 
@@ -82,6 +82,14 @@ class ChartTests(unittest.TestCase):
         values = ROOT / "deploy/contabo/lab-values.yaml.example"
         docs, _ = render("-f", str(values))
         self.assertTrue(any(d["kind"] == "StatefulSet" for d in docs))
+
+    def test_legacy_chart_isolated_from_active_chart(self):
+        legacy = ROOT / "legacy/bitnami-kafka"
+        self.assertTrue((legacy / "Chart.yaml").is_file())
+        self.assertTrue((legacy / "Chart.lock").is_file())
+        self.assertTrue((legacy / "templates").is_dir())
+        self.assertFalse((ROOT / "Chart.yaml").exists())
+        self.assertFalse((ROOT / "templates").exists())
 
     def test_linux_text_has_no_crlf(self):
         files = [*ROOT.glob("scripts/**/*.sh"), *ROOT.glob("tests/*.sh"),
