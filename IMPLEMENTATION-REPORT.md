@@ -453,3 +453,12 @@ Cluster-ID ve uzun TopicId raporda tekrar edilmedi; bunlar credential değildir 
 - `git diff --check`: GEÇTİ. Exact duplicate taramasında tracked dosyalar arasında aynı SHA-256 içeriğe sahip gereksiz kopya bulunmadı.
 - Sunucuya bağlanılmadı; çalışan Kafka release'e deploy/restart/mutation yapılmadı. Sunucu kullanımı için `lab/kafka-apache`, `scripts/` ve `deploy/` yolları aynı kaldı. Sadece repository kökündeki eski chart komutları artık `legacy/bitnami-kafka` yolunu kullanır.
 - Bu yapı/temizlik değişiklikleri henüz commit/push edilmedi; Git sonucu takip kaydında yazılacak.
+
+### Repository sadeleştirmesi — Git sonucu
+
+- Staged secret-pattern taraması text dosyalarında private-key başlığı ve yaygın GitHub/AWS token kalıpları için eşleşme bulmadı. Legacy değerler zaten repository'deki mevcut kaynakların %100 rename içeriğidir. Binary/TGZ metin regex taramasına sokulmadı; yeni binary eklenmedi.
+- Staged diff, legacy chart'ın Chart/lock/templates/charts/values/CHANGELOG/.helmignore dosyalarını %100 rename olarak algıladı. Aktif runtime tarafında yalnız `lab/kafka-apache/README.md` değişti; `lab/kafka-apache` chart manifest/scriptleri, `scripts/` ve `deploy/` için kod diff'i yoktur.
+- Commit: `1a1f6c52dc7addeca09cc14a82fd6727c564e47e` — `Simplify repository layout and isolate legacy Bitnami chart`; 65 dosya, 1659 ekleme / 1866 silme. Yüksek dosya sayısı legacy dizin taşımasından kaynaklanır; çoğu %100 rename'dir.
+- `git push origin main`: başarılı, `d4fe553..1a1f6c5 main -> main`. `git ls-remote origin refs/heads/main` aynı tam SHA'yı döndürdü.
+- Bu kayıt ayrı takip commit'inde saklanır. Git history rewrite/force-push yapılmadığı için çıkarılan ~74 MiB binary eski commitlerde kalır; güncel checkout/ağaç temizdir fakat repository'nin tüm tarihini klonlayan ağ transferinden blob'ların hemen yok olduğu iddia edilmez. History küçültme ayrı, koordinasyon gerektiren yıkıcı işlemdir ve bu kapsamda yapılmadı.
+- Kaynak push'u çalışan sunucuda deploy tetiklemedi. Sunucu bir sonraki `git pull --ff-only` sonrasında yeni düzeni alır; manuel deploy yolu değişmedi.
