@@ -411,3 +411,12 @@ Cluster-ID ve uzun TopicId raporda tekrar edilmedi; bunlar credential değildir 
 - Quorum görselindeki leader 0 / epoch 3, daha önceki smoke metnindeki leader 1 / epoch 2'den sonraki sağlıklı bir durumdur; controller leader değişimi tek başına hata değildir. High watermark artışı da sonraki metadata işlemleriyle uyumludur; yük testi olarak yorumlanmadı.
 - `screenshots/README.md` gerçek dosya linkleri, boyutları ve kanıt/sınır tablosuyla yenilendi. Roadmap ekran görüntüsü maddesi, araştırma README ve demo notları tamamlandı olarak güncellendi. Tekrar deploy/restart yapılmadı; sunucuda hiçbir mutation çalıştırılmadı.
 - Bu turda chart/script kodu değiştirilmedi. Belge/link testi, whitespace, binary hash ve staged secret-pattern kontrolleri commit öncesinde çalıştırılacak; commit/push sonucu ayrıca kaydedilecek.
+
+### Ekran görüntüsü teslimi — Git sonucu
+
+- `tests/test_roadmap.py`: 3/3 GEÇTİ; bütün yerel belge/görsel linkleri mevcut. `git diff --check` ve staged whitespace kontrolü geçti.
+- Kopyalanan PNG hashleri kaynakta ölçülen hashlerle aynıdır. Beş görsel toplam 261181 bayttır; Git staged stat her dosyayı yeni binary olarak doğruladı.
+- Markdown dosyalarında private-key başlığı ve yaygın GitHub/AWS token kalıpları tarandı: eşleşme yok. Binary dosyalar metin regex taraması yerine görsel inceleme ve SHA-256 bütünlük kontrolünden geçirildi. Bu tam secret/DLP taraması değildir.
+- Commit: `93659d0e268244c163d525c583d0751592fced1e` — `Add Kafka deployment evidence screenshots`; beş PNG + beş Markdown dosyası.
+- `git push origin main`: başarılı, `1add46b..93659d0 main -> main`. `git ls-remote origin refs/heads/main` aynı tam SHA'yı döndürdü.
+- Bu final Git sonucu ayrı rapor takip commit'inde tutulur. Push sunucuda deploy çalıştırmadı. Teknik roadmap ve gerçek ekran görüntüsü teslimi tamamlandı; production kapsamı hâlâ ayrı ve onaylanmış değildir.
