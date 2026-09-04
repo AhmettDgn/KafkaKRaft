@@ -518,4 +518,6 @@ Cluster-ID ve uzun TopicId raporda tekrar edilmedi; bunlar credential değildir 
 - Kullanıcı gerçek Kafka DNS adını ve güvenilir istemci CIDR'lerini sağlamalı; DNS/sertifika ve Contabo/UFW 31092–31094 kuralları canlı deploy öncesi doğrulanmalıdır.
 - Secure canlı akış: root ile `bootstrap.sh --profile secure --install` ve secret hazırlığı; normal deploy kullanıcısıyla `deploy.sh --config ... --check`, deploy ve secure smoke/restart. Render başarısı deploy başarısı olarak gösterilmez.
 - Kaynak geri alma, bu değişiklikleri revert eden incelenmiş commit ile yapılır. Henüz secure release kurulmadığından cluster rollback yoktur. İleride secure deploy başarısız olursa PVC/namespace/cluster-ID/credential Secret'ları otomatik silinmez; önce Helm history, pod events/logs ve storage audit alınır.
-- Commit/push: henüz yapılmadı. Sunucuda çalışan revision değişmedi.
+- Uygulama commit'i: `8888f72b95fd0222e8f7c55c7fca82a04afce570` — `Add secure Kafka chart profile and JMX image`; 37 dosya, 1025 ekleme / 174 silme.
+- `git push origin main`: başarılı, `d8f1bd4..8888f72 main -> main`. `git ls-remote origin refs/heads/main` aynı tam SHA'yı döndürdü. Bu rapor sonucu ayrı takip commit'inde saklanır.
+- GitHub push'u sunucuda otomatik deploy tetiklemedi. Contabo'da çalışan `kafka-lab` revision'ı değişmedi; `kafka-secure` kurulmadı.
