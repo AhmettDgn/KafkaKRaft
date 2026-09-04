@@ -1,0 +1,32 @@
+# Copy to /etc/kafka-kraft/secure-values.yaml and replace both documentation placeholders.
+replicaCount: 3
+existingClusterIdSecret: kafka-secure-cluster-id
+image:
+  repository: ghcr.io/ahmettdgn/kafka-jmx
+  tag: 4.0.2-jmx-1.6.0
+  digest: sha256:REPLACE_WITH_64_HEX_MANIFEST_DIGEST
+storage: {storageClass: local-path, size: 5Gi}
+security:
+  enabled: true
+  tls: {existingSecret: kafka-secure-tls}
+  sasl: {existingSecret: kafka-secure-auth}
+  authorization: {enabled: true, adminPrincipal: "User:admin"}
+externalAccess:
+  enabled: true
+  advertisedHost: kafka.example.com
+  nodePorts: [31092, 31093, 31094]
+  allowedCIDRs: ["203.0.113.10/32"]
+metrics:
+  enabled: true
+  port: 9404
+  serviceMonitor: {enabled: false, namespace: "", interval: 30s, labels: {}}
+  prometheusRule: {enabled: false, namespace: "", labels: {}}
+provisioning:
+  enabled: true
+  topics: [{name: application-events, partitions: 3, replicationFactor: 3}]
+  acls:
+    - {principal: "User:application", operation: Write, resourceType: topic, resourceName: application-events}
+    - {principal: "User:application", operation: Read, resourceType: topic, resourceName: application-events}
+    - {principal: "User:application", operation: Read, resourceType: group, resourceName: application-consumers}
+serviceAccount: {create: true, name: ""}
+rbac: {create: true}

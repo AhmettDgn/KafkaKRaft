@@ -11,6 +11,44 @@ spec:
     {{- include "lab.labels" . | nindent 4 }}
   ports:
     - {name: client, port: 9092, targetPort: client}
+{{- if .Values.externalAccess.enabled }}
+{{- range $ordinal, $nodePort := .Values.externalAccess.nodePorts }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "lab.name" $ }}-external-{{ $ordinal }}
+  labels:
+    {{- include "lab.labels" $ | nindent 4 }}
+spec:
+  type: NodePort
+  externalTrafficPolicy: Local
+  selector:
+    {{- include "lab.labels" $ | nindent 4 }}
+    statefulset.kubernetes.io/pod-name: {{ include "lab.name" $ }}-{{ $ordinal }}
+  ports:
+    - name: external
+      port: 9094
+      targetPort: external
+      nodePort: {{ $nodePort }}
+{{- end }}
+{{- end }}
+{{- if .Values.metrics.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "lab.name" . }}-metrics
+  labels:
+    {{- include "lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: metrics
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "lab.labels" . | nindent 4 }}
+  ports:
+    - {name: metrics, port: {{ .Values.metrics.port }}, targetPort: metrics}
+{{- end }}
     - {name: controller, port: 9093, targetPort: controller}
 ---
 apiVersion: v1

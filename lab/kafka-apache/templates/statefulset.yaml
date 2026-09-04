@@ -43,7 +43,11 @@ spec:
         kafka-lab/storage-layout: pvc-v2
         kafka-lab/identity-contract: {{ include "lab.identity" . | quote }}
         checksum/scripts: {{ .Files.Get "files/start.sh" | sha256sum }}
+        checksum/config: {{ toJson .Values.extraConfig | sha256sum }}
+        checksum/security: {{ toJson .Values.security | sha256sum }}
+        checksum/metrics: {{ toJson .Values.metrics | sha256sum }}
     spec:
+      serviceAccountName: {{ include "lab.serviceAccountName" . }}
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: 120
       nodeSelector:
@@ -86,6 +90,20 @@ spec:
             - {name: LOG_DIR, value: /tmp/kafka-logs}
             - {name: DATA_VOLUME_ROOT, value: /var/lib/kafka/data}
             - {name: DATA_DIR, value: /var/lib/kafka/data/kraft}
+            - {name: SECURITY_ENABLED, value: {{ .Values.security.enabled | quote }}}
+            - {name: AUTHORIZATION_ENABLED, value: {{ .Values.security.authorization.enabled | quote }}}
+            - {name: ADMIN_PRINCIPAL, value: {{ .Values.security.authorization.adminPrincipal | quote }}}
+            - {name: EXTERNAL_ENABLED, value: {{ .Values.externalAccess.enabled | quote }}}
+            - {name: EXTERNAL_HOST, value: {{ .Values.externalAccess.advertisedHost | quote }}}
+            - {name: METRICS_ENABLED, value: {{ .Values.metrics.enabled | quote }}}
+            - {name: METRICS_PORT, value: {{ .Values.metrics.port | quote }}}
+            {{- range $ordinal, $port := .Values.externalAccess.nodePorts }}
+            - {name: {{ printf "EXTERNAL_NODE_PORT_%d" $ordinal }}, value: {{ $port | quote }}}
+            {{- end }}
+            {{- if .Values.security.enabled }}
+            - {name: TLS_DIR, value: /etc/kafka/tls}
+            - {name: AUTH_DIR, value: /etc/kafka/auth}
+            {{- end }}
             - name: CLUSTER_ID
               valueFrom:
                 secretKeyRef:
@@ -94,6 +112,12 @@ spec:
           ports:
             - {name: client, containerPort: 9092}
             - {name: controller, containerPort: 9093}
+            {{- if .Values.externalAccess.enabled }}
+            - {name: external, containerPort: 9094}
+            {{- end }}
+            {{- if .Values.metrics.enabled }}
+            - {name: metrics, containerPort: {{ .Values.metrics.port }}}
+            {{- end }}
           startupProbe:
             tcpSocket: {port: client}
             periodSeconds: 10
@@ -103,7 +127,7 @@ spec:
               command:
                 - /bin/bash
                 - -ec
-                - KAFKA_HEAP_OPTS='-Xms32m -Xmx128m' /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1
+                - KAFKA_HEAP_OPTS='-Xms32m -Xmx128m' /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server "${POD_NAME}.${RELEASE_NAME}-headless.${POD_NAMESPACE}.svc.${CLUSTER_DOMAIN}:9092" {{ if .Values.security.enabled }}--command-config /etc/kafka/auth/admin.properties{{ end }} >/dev/null 2>&1
             periodSeconds: 30
             timeoutSeconds: 15
             failureThreshold: 3
@@ -121,11 +145,39 @@ spec:
             - {name: config, mountPath: /work}
             - {name: tmp, mountPath: /tmp}
             - {name: scripts, mountPath: /scripts, readOnly: true}
+            - {name: extra-config, mountPath: /work/extra.properties, subPath: extra.properties, readOnly: true}
+            {{- if .Values.security.enabled }}
+            - {name: tls, mountPath: /etc/kafka/tls, readOnly: true}
+            - {name: auth, mountPath: /etc/kafka/auth, readOnly: true}
+            {{- end }}
+            {{- if .Values.metrics.enabled }}
+            - {name: jmx-config, mountPath: /work/jmx-exporter.yml, subPath: jmx-exporter.yml, readOnly: true}
+            {{- end }}
       volumes:
         - name: scripts
           configMap:
             name: {{ include "lab.name" . }}-scripts
             defaultMode: 0444
+        - name: extra-config
+          configMap:
+            name: {{ include "lab.name" . }}-scripts
+            defaultMode: 0444
+        {{- if .Values.security.enabled }}
+        - name: tls
+          secret:
+            secretName: {{ .Values.security.tls.existingSecret }}
+            defaultMode: 0440
+        - name: auth
+          secret:
+            secretName: {{ .Values.security.sasl.existingSecret }}
+            defaultMode: 0440
+        {{- end }}
+        {{- if .Values.metrics.enabled }}
+        - name: jmx-config
+          configMap:
+            name: {{ include "lab.name" . }}-jmx
+            defaultMode: 0444
+        {{- end }}
         - {name: config, emptyDir: {}}
         - {name: tmp, emptyDir: {}}
         - {name: image-secrets, emptyDir: {}}

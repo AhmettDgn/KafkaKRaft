@@ -2,16 +2,19 @@
 # Manual deployment of the current local checkout. No fetch, push, SSH or workflow.
 set -Eeuo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-mode="${1:---deploy}"
-case "$mode" in --check|--deploy) ;; *) echo "Usage: deploy.sh [--check|--deploy]"; exit 1;; esac
 config=/etc/kafka-kraft/deploy.env
+if [[ "${1:-}" == --config ]]; then config="${2:-}"; shift 2; fi
+mode="${1:---deploy}"
+case "$mode" in --check|--deploy) ;; *) echo "Usage: deploy.sh [--config /etc/kafka-kraft/{,secure-}deploy.env] [--check|--deploy]"; exit 1;; esac
+[[ "$config" == /etc/kafka-kraft/deploy.env || "$config" == /etc/kafka-kraft/secure-deploy.env ]] || { echo "Unsupported config path" >&2; exit 1; }
 [[ -r "$config" ]] || { echo "Run bootstrap first: $config is not readable" >&2; exit 1; }
 # shellcheck source=/dev/null
 source "$config"
 export KUBECONFIG
+export NAMESPACE RELEASE_NAME
 : "${KUBECONFIG:?}" "${VALUES_FILE:?}" "${REPORT_DIR:?}"
-[[ "${NAMESPACE:-}" == kafka-lab && "${RELEASE_NAME:-}" == kafka-lab ]] || {
-  echo "Only the dedicated kafka-lab release/namespace is supported" >&2; exit 1;
+[[ "${NAMESPACE:-}" == "${RELEASE_NAME:-}" && ( "$NAMESPACE" == kafka-lab || "$NAMESPACE" == kafka-secure ) ]] || {
+  echo "Only dedicated kafka-lab or kafka-secure release/namespace pairs are supported" >&2; exit 1;
 }
 [[ -r "$VALUES_FILE" && -r "$KUBECONFIG" ]] || { echo "Values or kubeconfig unreadable"; exit 1; }
 mkdir -p "$REPORT_DIR"
@@ -40,7 +43,10 @@ exec 9>"$REPORT_DIR/deploy.lock"
 flock -n 9 || { echo "Another deployment is in progress"; exit 1; }
 chart="$root/lab/kafka-apache"
 kubectl auth can-i create statefulsets.apps -n "$NAMESPACE"
-kubectl get secret kafka-lab-cluster-id -n "$NAMESPACE" -o name
+kubectl get secret "${NAMESPACE}-cluster-id" -n "$NAMESPACE" -o name
+if [[ "$NAMESPACE" == kafka-secure ]]; then
+  kubectl get secret kafka-secure-tls kafka-secure-auth -n "$NAMESPACE" -o name
+fi
 # Refuse legacy/shadowed storage BEFORE any apply or Helm mutation.
 bash "$root/scripts/lab/storage-audit.sh" --pre-deploy
 helm lint "$chart" --strict -f "$VALUES_FILE"

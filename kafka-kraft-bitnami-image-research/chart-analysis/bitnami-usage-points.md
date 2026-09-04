@@ -33,4 +33,4 @@ Salt image bağımlılığını kaldırmak için en az şu template grupları de
 
 Bu nedenle doğru değişim tipi “values override” değil, kontrollü bir chart fork/port işlemidir.
 
-Bu haftaki uygulama, bu özelliklerin tamamını taşımak yerine `lab/kafka-apache` altında sınırlı bağımsız demo chart'ıdır. Orijinal template'ler korunmuştur; demo içinde TLS/SASL/JMX/provisioning Job port edildiği iddia edilmez. [Seçim ve kapsam](../alternatives/selected-image-decision.md).
+İlk 0.2.0 uygulaması sınırlı bağımsız demo chart'ıydı. Roadmap sonrası 0.3.0 genişletmesi TLS/SASL/ACL, dış Service, doğrulanmış JMX agent ve provisioning Job karşılıklarını opt-in secure profile ekledi. Eski Bitnami template'leri birebir kopyalanmadı; HPA/VPA, rol ayrımı ve auto-discovery kasıtlı olarak taşınmadı. Secure profil canlı doğrulanmış sayılmaz. [Seçim ve kapsam](../alternatives/selected-image-decision.md).

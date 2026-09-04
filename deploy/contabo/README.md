@@ -11,7 +11,7 @@ GitHub otomasyonu yoktur. `git push` sunucuda hiçbir komut çalıştırmaz. Her
 - Contabo ağ firewall'ında SSH erişiminizi koruyun. **6443/TCP, 10250/TCP, 8472/UDP ve 9092–9093/TCP portlarına internetten erişimi kapatın.** Kafka ve API'yi public açmayın. Egress DNS/HTTPS image/package indirmeleri için gerekli. Script firewall değiştirmez.
 - Aktif UFW/başka host firewall varsa K3s pod/service trafiği ve DNS için yerel kuralları [K3s gereksinimlerine](https://docs.k3s.io/installation/requirements) göre inceleyin; firewall'ı körlemesine kapatmayın.
 - Sabit sürümler: `deploy/contabo/versions.env`. Varsayılan storage `local-path`; 3 adet 5Gi PVC. Local-path kapasitesi gerçek disk kotası değildir; disk izleme/yedek gerekir.
-- Bu kurulum TLS/SASL içermeyen cluster içi testtir. Üç pod aynı fiziksel sunucudadır; sunucu kaybına karşı HA sağlamaz.
+- Varsayılan `lab` profili TLS/SASL içermeyen cluster içi testtir. Ayrı `secure` profil aşağıda açıklanır. Üç pod aynı fiziksel sunucudadır; sunucu kaybına karşı HA sağlamaz.
 
 ## 2. Repoyu alın ve ön kontrolü çalıştırın
 
@@ -75,9 +75,43 @@ bash scripts/lab/smoke-test.sh --restart
 - Smoke testi gerçek topic oluşturur, mesaj yazar/okur ve ISR kontrol eder. Restart testi bir pod'u silip yeniden oluşmasını bekler, metadata ve mesaj kalıcılığını kontrol eder; geri gelen cluster'a yeni mesaj da yazar.
 - Test topic'leri bilerek bırakılır, mesaj retention'ı bir saattir. Topic isimleri rapordadır; topic nesneleri otomatik silinmez.
 
-Mevcut Bitnami `values/` dosyalarını bu chart'a vermeyin. Replica sayısı/cluster adı/namespace/domain sonradan değiştirilemez; yeni izole release ve boş storage gerekir. Varsayılan manuel scriptler yalnız `kafka-lab` namespace/release destekler.
+Mevcut Bitnami `values/` dosyalarını bu chart'a vermeyin. Replica sayısı/cluster adı/namespace/domain sonradan değiştirilemez; yeni izole release ve boş storage gerekir. Manuel scriptler yalnız eşleşen `kafka-lab` veya `kafka-secure` release/namespace çiftlerini destekler.
 
-## 5. Sonraki güncellemeler
+## 5. Ayrı secure profil
+
+Secure profil mevcut `kafka-lab` kümesini yükseltmez; yeni namespace, cluster-ID ve PVC'ler kullanır. Önce custom image'i Docker/Buildx ve GHCR oturumuyla manuel yayımlayın:
+
+```bash
+bash images/kafka-jmx/build-and-push.sh
+docker buildx imagetools inspect ghcr.io/ahmettdgn/kafka-jmx:4.0.2-jmx-1.6.0
+```
+
+Çıktıdaki multi-arch manifest digest'ini not edin. Ardından root olarak secure namespace/RBAC/config dosyalarını ve harici test Secret'larını oluşturun:
+
+GHCR package public değilse önce namespace'te bir registry pull Secret oluşturup `image.pullSecrets` alanına yalnız Secret adını yazın; registry token'ını values veya rapora koymayın. Public package kullanılması laboratuvar için daha basit varsayımdır.
+
+```bash
+sudo env DEPLOY_USER="$(id -un)" LAB_FIREWALL_CONFIRMED=true \
+  bash scripts/contabo/bootstrap.sh --profile secure --install
+sudo env DEPLOY_USER="$(id -un)" \
+  bash scripts/contabo/prepare-secure-secrets.sh kafka.example.com
+sudoedit /etc/kafka-kraft/secure-values.yaml
+```
+
+`kafka.example.com`, gerçek sunucu DNS adıyla; örnek digest gerçek GHCR manifest digest'iyle; `203.0.113.10/32` yalnız güvenilen gerçek istemci CIDR'siyle değiştirilmelidir. DNS sunucu IP'sine çözülmeden ve Contabo/UFW üzerinde 31092–31094 yalnız bu CIDR'ye izinli olmadan deploy etmeyin. Script firewall değiştirmez. Üretilen CA test amaçlı ve bir yıl geçerlidir; production PKI değildir.
+
+Normal deploy kullanıcısıyla:
+
+```bash
+bash scripts/contabo/deploy.sh --config /etc/kafka-kraft/secure-deploy.env --check
+bash scripts/contabo/deploy.sh --config /etc/kafka-kraft/secure-deploy.env
+bash scripts/lab/smoke-test.sh --config /etc/kafka-kraft/secure-deploy.env
+bash scripts/lab/smoke-test.sh --config /etc/kafka-kraft/secure-deploy.env --restart
+```
+
+Smoke testi doğru admin ve application kimliklerini, yanlış parola reddini, ACL'siz principal reddini, JMX endpoint'ini, topic/mesaj akışını ve restart kalıcılığını denetler. Secret içeriğini veya `/etc/kafka-kraft/secure-deployer.kubeconfig` dosyasını rapora koymayın.
+
+## 6. Sonraki güncellemeler
 
 ```bash
 git status --short
@@ -91,7 +125,7 @@ bash scripts/lab/smoke-test.sh
 
 Git pull dosyaları getirir; **deploy komutuna kadar cluster değişmez**. Deploy kirli checkout'ı reddeder. Sunucu ayarlarını repo dışında `/etc/kafka-kraft/lab-values.yaml` içinde `sudoedit` ile düzenleyin; override değişikliklerini hassas veri olmadan raporlayın.
 
-## 6. Teşhis ve geri alma
+## 7. Teşhis ve geri alma
 
 ```bash
 export KUBECONFIG=/etc/kafka-kraft/deployer.kubeconfig
@@ -116,4 +150,4 @@ K3s ve PV verisi için ayrı, doğrulanmış yedekleme gereklidir. Bu paket prod
 
 ## Henüz doğrulanmamış olanlar
 
-0.1.0 için kullanıcı çıktıları gerçek bootstrap/deploy/mesaj başarısını ve kalıcılık hatasını doğruladı. 0.2.0 düzeltmesinin gerçek Contabo mount/restart doğrulaması henüz yapılmadı. Yeni offline testlerin geçmesi bu doğrulamanın yerine geçmez. Sonuçları `IMPLEMENTATION-REPORT.md` ve sunucu `/var/log/kafka-lab` raporlarıyla ayrı kaydedin.
+0.1.0 için kullanıcı çıktıları kalıcılık hatasını doğruladı; temiz 0.2.0 deploy ve restart kalıcılık kabulü daha sonra geçti. 0.3.0 secure profil yalnız offline doğrulanmıştır. Custom multi-arch image/CVE taraması ve gerçek `kafka-secure` deploy sonuçlarını `IMPLEMENTATION-REPORT.md` ile `/var/log/kafka-secure` raporlarına ayrıca kaydedin.

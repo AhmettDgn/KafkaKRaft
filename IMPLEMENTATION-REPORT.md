@@ -462,3 +462,60 @@ Cluster-ID ve uzun TopicId raporda tekrar edilmedi; bunlar credential değildir 
 - `git push origin main`: başarılı, `d4fe553..1a1f6c5 main -> main`. `git ls-remote origin refs/heads/main` aynı tam SHA'yı döndürdü.
 - Bu kayıt ayrı takip commit'inde saklanır. Git history rewrite/force-push yapılmadığı için çıkarılan ~74 MiB binary eski commitlerde kalır; güncel checkout/ağaç temizdir fakat repository'nin tüm tarihini klonlayan ağ transferinden blob'ların hemen yok olduğu iddia edilmez. History küçültme ayrı, koordinasyon gerektiren yıkıcı işlemdir ve bu kapsamda yapılmadı.
 - Kaynak push'u çalışan sunucuda deploy tetiklemedi. Sunucu bir sonraki `git pull --ff-only` sonrasında yeni düzeni alır; manuel deploy yolu değişmedi.
+
+## 2026-09-04 — Apache Kafka chart 0.3.0 güvenli genişletmesi
+
+### Başlangıç ve amaç
+
+- Başlangıç commit'i `d8f1bd48f115e41665c4bdd102d96bc9b89a8a30`; çalışma ağacı temizdi. Amaç mevcut canlı `kafka-lab`/0.2.0 kümesine dokunmadan, ayrı `kafka-secure` kurulumu için TLS/SASL, ACL, NodePort, JMX/Prometheus, provisioning ve kontrollü genişletme yüzeyi hazırlamaktır.
+- GitHub workflow eklenmedi. Bu çalışma sırasında Contabo'ya bağlanılmadı, Kubernetes kaynağı değiştirilmedi, image registry'ye push yapılmadı ve mevcut PVC/Secret/release üzerinde işlem yapılmadı.
+
+### Chart, image ve sunucu değişiklikleri
+
+- `lab/kafka-apache` chart sürümü 0.3.0 oldu. Varsayılan values 0.2.0 PLAINTEXT davranışını korur. Secure kaynaklar yalnız ilgili alanlar açıldığında render edilir.
+- Secure runtime; INTERNAL 9092 `SASL_SSL`, CONTROLLER 9093 karşılıklı SSL, EXTERNAL 9094 `SASL_SSL`, StandardAuthorizer default-deny, dış Secret mount'ları ve JMX Java agent seçeneklerini üretir. Listener/quorum/storage/identity ayarlarının `extraConfig` ile ezilmesi engellendi.
+- Yeni template'ler: ServiceAccount/RBAC, broker başına NodePort, metrics Service, CRD-aware ServiceMonitor/PrometheusRule, idempotent topic/ACL provisioning hook ve allowlist'li extraDeploy. Controller dış Service almaz.
+- `deploy/contabo/secure-access.yaml`, secure values/env örnekleri ve `bootstrap.sh --profile secure` eklendi. Deploy/smoke scriptleri yalnız açıkça izinli `/etc/kafka-kraft/secure-deploy.env` ile `kafka-secure` çiftini kabul eder. Varsayılan komutlar hâlâ `kafka-lab` kullanır.
+- `prepare-secure-secrets.sh` test CA/DNS SAN sertifikası, PKCS12 store'lar ve rastgele admin/application/denied SASL kullanıcılarını repo/Helm dışında üretir; mevcut Secret'ları otomatik değiştirmeyi reddeder. Credential çıktısı yazdırılmaz.
+- `images/kafka-jmx` Dockerfile'ı sabit Apache Kafka 4.0.2 index digest'i üzerine resmi Prometheus JMX Exporter 1.6.0 agent ekler. Release jar'ı indirildi: 10,714,619 bayt; SHA256 `a95983fd96e865d2bcdf911cc500e7c82808c27ab9fd226bf96732b6c3d8c46e`. Bu hassas veri değildir. Dockerfile aynı hash'i `ADD --checksum` ile zorunlu tutar.
+
+### Hatalar ve düzeltmeler
+
+- İlk doğrulamada `helm` PATH'te bulunamadı. Repository dışında daha önce indirilmiş Helm 3.18.6 absolute path ile kullanıldı; kaynak deposuna binary eklenmedi.
+- Varsayılan `bash` WSL servisi sandbox içinde `E_ACCESSDENIED` verdi. Aynı syntax/testler kurulu Git for Windows Bash ile çalıştırıldı.
+- İlk büyük schema patch'i aynı dosyada delete/add işlemini tek patch'te içerdiği için apply doğrulamasında reddedildi; dosya iki ayrı güvenli patch ile değiştirildi. Ara durumda test/deploy çalıştırılmadı.
+- İlk secure listener taslağı ortak property'leri ikinci kez yazıyordu. Canlı testten önce tek listener değişken setine refactor edildi; mock test `listeners=` satırının tek olduğunu doğrular.
+- Local Docker build önce sandbox Docker config izni, izin verildikten sonra kapalı Docker Desktop Linux engine nedeniyle başlayamadı. Hata: Docker API named pipe bulunamadı. Image build başarısı iddia edilmez.
+
+### Test matrisi
+
+| Test | Sonuç |
+| --- | --- |
+| Aktif chart strict Helm lint | GEÇTİ; 1 chart, 0 failed; yalnız icon önerisi |
+| Varsayılan PLAINTEXT render/regresyon | GEÇTİ |
+| Secure TLS/SASL/ACL/NodePort/JMX/provisioning render | GEÇTİ |
+| ServiceMonitor + PrometheusRule CRD capability render | GEÇTİ |
+| Schema ve cross-field negatifleri | GEÇTİ: eksik Secret/DNS/CIDR, güvenliksiz dış erişim, metrics bağımlılığı ve protected config reddi |
+| `tests/test_chart.py` | GEÇTİ: 10/10 |
+| `tests/test_storage.py` | GEÇTİ: 10/10 |
+| `tests/test_roadmap.py` | GEÇTİ: 3/3 |
+| Mock startup | GEÇTİ: 13 senaryo; secure listener/authorizer/JMX ve storage fail-closed yolları |
+| Mock cluster-ID | GEÇTİ: mevcut ID, yeni ID, eski PVC ve API hatası senaryoları |
+| Tam `scripts/validate.sh` | GEÇTİ; canlı deploy içermez |
+| Resmi JMX jar SHA256 | GEÇTİ |
+| Local amd64 custom image build | ÇALIŞTIRILAMADI: Docker Linux engine kapalı |
+| Multi-arch build/push, manifest digest, SBOM/CVE taraması | ÇALIŞTIRILMADI |
+| `kafka-secure` API dry-run/deploy/TLS/SASL/ACL/JMX/restart | ÇALIŞTIRILMADI |
+| Mevcut `kafka-lab` öncesi/sonrası karşılaştırması | ÇALIŞTIRILMADI; sunucuya erişilmedi |
+
+- Secure profil, Prometheus CRD seçenekleri kapalıyken 15 Kubernetes kaynağı render etti: 6 Service, 2 ConfigMap ve birer NetworkPolicy, PDB, ServiceAccount, Role, RoleBinding, StatefulSet ve Job. İki seçenek ile API capability birlikte verildiğinde ServiceMonitor ve PrometheusRule eklenerek toplam 17 kaynak oluştu.
+- Aktif chart/image runtime dosyalarında `bitnami/`, `/opt/bitnami` ve `KAFKA_CFG_` taraması eşleşme bulmadı. Private-key başlığı ve yaygın GitHub/AWS token biçimlerine yönelik sınırlı kaynak taraması da eşleşme bulmadı. Bunlar tam DLP/secret scanner değildir.
+- `git diff --check`: GEÇTİ. Yeni shell dosyaları dahil Bash syntax kontrolü tam validate akışında geçti.
+
+### Kalan işler, kullanıcı girdileri ve geri alma
+
+- Docker engine çalışan ve GHCR yetkili bir ortamda `images/kafka-jmx/build-and-push.sh` çalıştırılmalı; amd64/arm64 index digest secure values dosyasına yazılmalı ve scanner sonucu ayrıca kaydedilmelidir.
+- Kullanıcı gerçek Kafka DNS adını ve güvenilir istemci CIDR'lerini sağlamalı; DNS/sertifika ve Contabo/UFW 31092–31094 kuralları canlı deploy öncesi doğrulanmalıdır.
+- Secure canlı akış: root ile `bootstrap.sh --profile secure --install` ve secret hazırlığı; normal deploy kullanıcısıyla `deploy.sh --config ... --check`, deploy ve secure smoke/restart. Render başarısı deploy başarısı olarak gösterilmez.
+- Kaynak geri alma, bu değişiklikleri revert eden incelenmiş commit ile yapılır. Henüz secure release kurulmadığından cluster rollback yoktur. İleride secure deploy başarısız olursa PVC/namespace/cluster-ID/credential Secret'ları otomatik silinmez; önce Helm history, pod events/logs ve storage audit alınır.
+- Commit/push: henüz yapılmadı. Sunucuda çalışan revision değişmedi.

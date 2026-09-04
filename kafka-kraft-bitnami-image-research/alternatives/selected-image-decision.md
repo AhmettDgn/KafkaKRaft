@@ -2,7 +2,7 @@
 
 ## Güncel karar — 2026-08-31
 
-Demo için `docker.io/apache/kafka:4.0.2@sha256:836cafdad9f4825880d7cf1d5a21202915ae2527bd0ef1c3600c526ed7814d1f` seçildi. Gerçek chart `lab/kafka-apache`; sürüm 0.2.0. Kurum registry'sinde custom image build edildiği, tüm Bitnami özelliklerinin port edildiği veya production onayı verildiği iddia edilmiyor.
+Demo için `docker.io/apache/kafka:4.0.2@sha256:836cafdad9f4825880d7cf1d5a21202915ae2527bd0ef1c3600c526ed7814d1f` seçildi. 0.2.0 PLAINTEXT demo bu image ile canlı doğrulandı. Roadmap sonrası chart 0.3.0, JMX için aynı digest üzerine resmi ve checksum doğrulanmış JMX Exporter agent ekleyen manuel multi-arch build tanımı sunar. Custom image henüz build/push edilmediği ve secure profil canlı kurulmadığı için production veya secure-runtime onayı verilmez.
 
 ## Gerekçe
 
@@ -34,4 +34,4 @@ Roadmap, başarısız deploy/test alanlarının teknik sebebi ve sonraki adımı
 
 Eski veriler, kullanıcı tarafından disposable olduğu açıkça onaylandıktan sonra kontrollü temiz kurulumla sıfırlandı; veri taşıması yapılmadı. 0.2.0 mount/kimlik/restart testi tamamlandı. Gelecekte gerçek veri taşıması gerekiyorsa [kontrollü storage recovery](../../deploy/contabo/STORAGE-RECOVERY.md) şartları yeniden geçerlidir.
 
-TLS/SASL/JMX/dış erişim ve production taşıması haftalık demo kapsamı dışında. GitHub otomasyonu kullanıcı isteğiyle yok. Sürüm/digest güncellemeleri CVE değerlendirmesi ve tekrar test gerektirir; 4.0.2'nin en güncel/ömür boyu güvenli sürüm olduğu iddia edilmez.
+TLS/SASL/JMX/dış erişim haftalık demonun zorunlu kapsamı değildi; 0.3.0'da ayrı opt-in secure profil olarak geliştirildi. Production taşıması hâlâ kapsam dışıdır. GitHub otomasyonu kullanıcı isteğiyle yok. Sürüm/digest güncellemeleri CVE değerlendirmesi ve tekrar test gerektirir; 4.0.2'nin en güncel/ömür boyu güvenli sürüm olduğu iddia edilmez.

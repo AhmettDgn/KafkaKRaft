@@ -19,3 +19,40 @@ resources:
     cpu: "1"
     memory: 1536Mi
 heapOpts: "-Xms512m -Xmx512m"
+security:
+  enabled: false
+  tls:
+    existingSecret: ""
+  sasl:
+    existingSecret: ""
+  authorization:
+    enabled: false
+    adminPrincipal: "User:admin"
+externalAccess:
+  enabled: false
+  advertisedHost: ""
+  nodePorts: []
+  allowedCIDRs: []
+metrics:
+  enabled: false
+  port: 9404
+  serviceMonitor:
+    enabled: false
+    namespace: ""
+    interval: 30s
+    labels: {}
+  prometheusRule:
+    enabled: false
+    namespace: ""
+    labels: {}
+provisioning:
+  enabled: false
+  topics: []
+  acls: []
+serviceAccount:
+  create: false
+  name: ""
+rbac:
+  create: false
+extraConfig: {}
+extraDeploy: []

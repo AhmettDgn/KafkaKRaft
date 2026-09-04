@@ -1,0 +1,6 @@
+{{- range .Values.extraDeploy }}
+{{- $allowed := list "ConfigMap" "Service" "NetworkPolicy" "PodDisruptionBudget" -}}
+{{- if not (has (get . "kind") $allowed) }}{{ fail "extraDeploy kind is not in the namespace-safe allowlist" }}{{- end }}
+---
+{{ tpl (toYaml .) $ }}
+{{- end }}

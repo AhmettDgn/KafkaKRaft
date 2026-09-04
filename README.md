@@ -1,6 +1,6 @@
 # Kafka KRaft — bağımsız Apache laboratuvarı
 
-Bitnami image veya Helm-library bağımlılığı olmayan Apache Kafka KRaft laboratuvarı. Chart 0.2.0, gerçek Contabo/K3s ortamında üç node deploy, exact PVC audit, quorum, topic, producer/consumer ve pod replacement sonrası kalıcılık testlerini geçti.
+Bitnami image veya Helm-library bağımlılığı olmayan Apache Kafka KRaft laboratuvarı. Chart 0.2.0, gerçek Contabo/K3s ortamında üç node deploy ve kalıcılık testlerini geçti. Chart 0.3.0 aynı sade profili korur; ayrı secure profilde TLS/SASL, ACL, NodePort, JMX/Prometheus ve provisioning kaynakları ekler. Secure profil offline doğrulanmıştır, canlı sunucu kabulü henüz yapılmamıştır.
 
 ## Hızlı yönlendirme
 
@@ -17,6 +17,7 @@ Bitnami image veya Helm-library bağımlılığı olmayan Apache Kafka KRaft lab
 lab/kafka-apache/                       Kullanılan bağımsız Apache Kafka chart'ı
 scripts/                                Offline doğrulama ve manuel sunucu araçları
 deploy/contabo/                         Ubuntu/K3s yapılandırma ve işletim rehberi
+images/kafka-jmx/                       Apache Kafka + doğrulanmış JMX agent image tanımı
 tests/                                  Chart, storage ve startup regresyon testleri
 kafka-kraft-bitnami-image-research/     Araştırma, test kanıtları ve ekran görüntüleri
 legacy/bitnami-kafka/                   Karşılaştırma için korunan eski Bitnami chart
@@ -34,8 +35,8 @@ bash scripts/validate.sh
 
 Ubuntu sunucu kurulumu ve manuel deploy için Contabo rehberini izleyin. GitHub Actions, otomatik SSH veya push sonrası deploy yoktur.
 
-## Sınırlar
+## Profiller ve sınırlar
 
-Bu cluster içi PLAINTEXT test ortamıdır. Üç pod aynı fiziksel sunucuda olduğundan host arızasına karşı HA sağlamaz. TLS/SASL, dış erişim, JMX, production veri taşıması, backup/restore ve güvenlik taraması ayrı kapsamdır.
+Varsayılan profil geriye uyumlu cluster-içi PLAINTEXT laboratuvarıdır. `deploy/contabo/secure-values.yaml.example` ayrı `kafka-secure` kurulumu için TLS/SASL, ACL, dış erişim ve metrics özelliklerini açar. Üç pod aynı fiziksel sunucuda olduğundan hiçbir profil host arızasına karşı HA sağlamaz. Production veri taşıması, backup/restore, yük testi ve secure profil canlı kabulü ayrıca yapılmalıdır.
 
 Eski 0.1.0 cluster'ları normal upgrade etmeyin; önce [storage recovery rehberini](deploy/contabo/STORAGE-RECOVERY.md) inceleyin.

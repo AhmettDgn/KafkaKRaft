@@ -39,7 +39,7 @@ Values dosyaları birbirinin yerine kullanılmaz: image-only-override `legacy/bi
 - Roadmap, eski başarısız denemenin teknik açıklamasını korur; 0.2.0 restart kalıcılığı gerçek sunucuda PASS olmuştur.
 - amd64/arm64 manifest kontrolü çalışma testi değildir. İki mimaride canlı test, CVE scanner, SBOM/imza doğrulaması yapılmadı.
 - Beş gerçek terminal ekran görüntüsü [screenshots](screenshots/README.md) altında teslim edildi; sentetik görsel üretilmedi.
-- GitHub otomasyonu yoktur. Üç pod tek fiziksel sunucudadır; production HA, TLS/SASL, JMX ve dış erişim kapsam dışıdır.
+- GitHub otomasyonu yoktur. Üç pod tek fiziksel sunucudadır; production HA kapsam dışıdır. Roadmap sonrasında chart 0.3.0'a TLS/SASL/ACL, JMX ve dış erişim için ayrı opt-in secure profil eklendi; bu profil henüz yalnız offline doğrulanmıştır.
 - Eski veriler taşınmadı; kullanıcı disposable test verilerinin silinmesini onayladı. Fiziksel secure erase veya geri yükleme garantisi verilmedi. [Geçiş kaydı](../IMPLEMENTATION-REPORT.md).
 
-Teknik demo ve roadmap ekran görüntüsü teslimi tamamlandı. Production için TLS/SASL, dış erişim, JMX, zafiyet/SBOM/imza, yük/uzun süre ve fiziksel host arızası testleri ayrı kapsamdır.
+Teknik 0.2.0 demo ve roadmap ekran görüntüsü teslimi tamamlandı. 0.3.0 secure profil için multi-arch image push, zafiyet taraması, canlı TLS/SASL/ACL/JMX/dış erişim, yük/uzun süre ve fiziksel host arızası testleri henüz tamamlanmadı.

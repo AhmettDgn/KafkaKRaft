@@ -1,100 +1,42 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "required": [
-    "replicaCount",
-    "existingClusterIdSecret",
-    "image",
-    "storage",
-    "heapOpts"
-  ],
-  "additionalProperties": false,
+  "type": "object", "additionalProperties": false,
+  "required": ["replicaCount", "existingClusterIdSecret", "image", "storage", "heapOpts", "security", "externalAccess", "metrics", "provisioning"],
   "properties": {
-    "replicaCount": {
-      "type": "integer",
-      "enum": [
-        1,
-        3
-      ]
-    },
-    "existingClusterIdSecret": {
-      "type": "string",
-      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
-      "maxLength": 63
-    },
-    "clusterDomain": {
-      "type": "string",
-      "pattern": "^[a-z0-9.-]+$"
-    },
-    "image": {
-      "type": "object",
-      "required": [
-        "repository",
-        "tag",
-        "digest",
-        "pullPolicy",
-        "pullSecrets"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "repository": {
-          "type": "string",
-          "pattern": "^[a-zA-Z0-9./:_-]+$"
-        },
-        "tag": {
-          "type": "string",
-          "minLength": 1
-        },
-        "digest": {
-          "type": "string",
-          "pattern": "^sha256:[a-f0-9]{64}$"
-        },
-        "pullPolicy": {
-          "enum": [
-            "Always",
-            "IfNotPresent",
-            "Never"
-          ]
-        },
-        "pullSecrets": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": [
-              "name"
-            ],
-            "properties": {
-              "name": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      }
-    },
-    "storage": {
-      "type": "object",
-      "required": [
-        "size",
-        "storageClass"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "size": {
-          "type": "string",
-          "pattern": "^[1-9][0-9]*(Mi|Gi|Ti)$"
-        },
-        "storageClass": {
-          "type": "string"
-        }
-      }
-    },
-    "resources": {
-      "type": "object"
-    },
-    "heapOpts": {
-      "type": "string",
-      "minLength": 1
-    }
+    "replicaCount": {"type": "integer", "enum": [1, 3]},
+    "existingClusterIdSecret": {"type": "string", "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", "maxLength": 63},
+    "clusterDomain": {"type": "string", "pattern": "^[a-z0-9.-]+$"},
+    "image": {"type": "object", "additionalProperties": false, "required": ["repository", "tag", "digest", "pullPolicy", "pullSecrets"], "properties": {
+      "repository": {"type": "string", "pattern": "^[a-zA-Z0-9./:_-]+$"}, "tag": {"type": "string", "minLength": 1}, "digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+      "pullPolicy": {"enum": ["Always", "IfNotPresent", "Never"]}, "pullSecrets": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["name"], "properties": {"name": {"type": "string", "minLength": 1}}}}
+    }},
+    "storage": {"type": "object", "additionalProperties": false, "required": ["size", "storageClass"], "properties": {"size": {"type": "string", "pattern": "^[1-9][0-9]*(Mi|Gi|Ti)$"}, "storageClass": {"type": "string"}}},
+    "resources": {"type": "object"}, "heapOpts": {"type": "string", "minLength": 1},
+    "security": {"type": "object", "additionalProperties": false, "required": ["enabled", "tls", "sasl", "authorization"], "properties": {
+      "enabled": {"type": "boolean"}, "tls": {"$ref": "#/definitions/existingSecret"}, "sasl": {"$ref": "#/definitions/existingSecret"},
+      "authorization": {"type": "object", "additionalProperties": false, "required": ["enabled", "adminPrincipal"], "properties": {"enabled": {"type": "boolean"}, "adminPrincipal": {"type": "string", "pattern": "^User:[A-Za-z0-9._-]+$"}}}
+    }},
+    "externalAccess": {"type": "object", "additionalProperties": false, "required": ["enabled", "advertisedHost", "nodePorts", "allowedCIDRs"], "properties": {
+      "enabled": {"type": "boolean"}, "advertisedHost": {"type": "string", "pattern": "^$|^[A-Za-z0-9.-]+$"},
+      "nodePorts": {"type": "array", "uniqueItems": true, "items": {"type": "integer", "minimum": 30000, "maximum": 32767}},
+      "allowedCIDRs": {"type": "array", "items": {"type": "string", "pattern": "^[0-9a-fA-F:.]+/[0-9]{1,3}$"}}
+    }},
+    "metrics": {"type": "object", "additionalProperties": false, "required": ["enabled", "port", "serviceMonitor", "prometheusRule"], "properties": {
+      "enabled": {"type": "boolean"}, "port": {"type": "integer", "minimum": 1024, "maximum": 65535},
+      "serviceMonitor": {"$ref": "#/definitions/monitorObject"}, "prometheusRule": {"$ref": "#/definitions/ruleObject"}
+    }},
+    "provisioning": {"type": "object", "additionalProperties": false, "required": ["enabled", "topics", "acls"], "properties": {
+      "enabled": {"type": "boolean"},
+      "topics": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["name", "partitions", "replicationFactor"], "properties": {"name": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"}, "partitions": {"type": "integer", "minimum": 1}, "replicationFactor": {"type": "integer", "enum": [1, 3]}}}},
+      "acls": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["principal", "operation", "resourceType", "resourceName"], "properties": {"principal": {"type": "string", "pattern": "^User:[A-Za-z0-9._-]+$"}, "operation": {"enum": ["Read", "Write", "Create", "Delete", "Alter", "Describe", "ClusterAction", "DescribeConfigs", "AlterConfigs", "IdempotentWrite"]}, "resourceType": {"enum": ["topic", "group", "cluster", "transactional-id"]}, "resourceName": {"type": "string", "minLength": 1}}}}
+    }},
+    "serviceAccount": {"type": "object", "additionalProperties": false, "required": ["create", "name"], "properties": {"create": {"type": "boolean"}, "name": {"type": "string"}}},
+    "rbac": {"type": "object", "additionalProperties": false, "required": ["create"], "properties": {"create": {"type": "boolean"}}},
+    "extraConfig": {"type": "object", "additionalProperties": {"type": ["string", "number", "boolean"]}}, "extraDeploy": {"type": "array", "items": {"type": "object"}}
+  },
+  "definitions": {
+    "existingSecret": {"type": "object", "additionalProperties": false, "required": ["existingSecret"], "properties": {"existingSecret": {"type": "string", "pattern": "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", "maxLength": 63}}},
+    "monitorObject": {"type": "object", "additionalProperties": false, "required": ["enabled", "namespace", "interval", "labels"], "properties": {"enabled": {"type": "boolean"}, "namespace": {"type": "string"}, "interval": {"type": "string", "pattern": "^[1-9][0-9]*[smh]$"}, "labels": {"type": "object", "additionalProperties": {"type": "string"}}}},
+    "ruleObject": {"type": "object", "additionalProperties": false, "required": ["enabled", "namespace", "labels"], "properties": {"enabled": {"type": "boolean"}, "namespace": {"type": "string"}, "labels": {"type": "object", "additionalProperties": {"type": "string"}}}}
   }
 }

@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kafka-secure
+  labels:
+    app.kubernetes.io/managed-by: kafka-secure-bootstrap
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: kafka-secure-deployer, namespace: kafka-secure}
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: kafka-secure-deployer, namespace: kafka-secure}
+rules:
+  - apiGroups: [""]
+    resources: [pods, services, serviceaccounts, configmaps, secrets, persistentvolumeclaims]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [""]
+    resources: [pods/log]
+    verbs: [get]
+  - apiGroups: [""]
+    resources: [pods/exec]
+    verbs: [create, get]
+  - apiGroups: [""]
+    resources: [events]
+    verbs: [get, list, watch]
+  - apiGroups: [apps]
+    resources: [statefulsets]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [batch]
+    resources: [jobs]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [networking.k8s.io]
+    resources: [networkpolicies]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [policy]
+    resources: [poddisruptionbudgets]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [rbac.authorization.k8s.io]
+    resources: [roles, rolebindings]
+    verbs: [get, list, watch, create, update, patch, delete, bind]
+  - apiGroups: [monitoring.coreos.com]
+    resources: [servicemonitors, prometheusrules]
+    verbs: [get, list, watch, create, update, patch, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: kafka-secure-deployer, namespace: kafka-secure}
+subjects: [{kind: ServiceAccount, name: kafka-secure-deployer, namespace: kafka-secure}]
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: kafka-secure-deployer}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kafka-secure-deployer-token
+  namespace: kafka-secure
+  annotations: {kubernetes.io/service-account.name: kafka-secure-deployer}
+type: kubernetes.io/service-account-token

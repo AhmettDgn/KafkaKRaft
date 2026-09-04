@@ -22,6 +22,7 @@ cat > "$KAFKA_BIN/kafka-server-start.sh" <<'MOCK'
 #!/usr/bin/env bash
 set -eu
 printf 'start\n' >> "$CONFIG_DIR/calls"
+printf '%s\n' "${KAFKA_OPTS:-}" > "$CONFIG_DIR/kafka-opts"
 MOCK
 chmod +x "$KAFKA_BIN/"*.sh
 run_start() { bash "$root/lab/kafka-apache/files/start.sh"; }
@@ -67,4 +68,23 @@ mkdir -p "$DATA_VOLUME_ROOT"
 write_mount
 run_start
 grep -q '^min.insync.replicas=1$' "$CONFIG_DIR/server.properties"
-echo "PASS: 12 startup scenarios including shadow/nested/missing mounts and lost metadata; mock Kafka only"
+# Secure listener/auth/metrics generation uses fake files and fake Kafka, never credentials or network.
+export POD_NAME=kafka-secure-0 POD_NAMESPACE=kafka-secure RELEASE_NAME=kafka-secure REPLICA_COUNT=3
+export DATA_VOLUME_ROOT="$sandbox/secure-volume" DATA_DIR="$sandbox/secure-volume/kraft" CONFIG_DIR="$sandbox/secure-config"
+export SECURITY_ENABLED=true AUTHORIZATION_ENABLED=true ADMIN_PRINCIPAL=User:admin
+export EXTERNAL_ENABLED=true EXTERNAL_HOST=kafka.example.test EXTERNAL_NODE_PORT_0=31092
+export METRICS_ENABLED=true METRICS_PORT=9404
+export TLS_DIR="$sandbox/tls" AUTH_DIR="$sandbox/auth" JMX_AGENT_PATH="$sandbox/jmx-agent.jar" JMX_CONFIG_PATH="$sandbox/jmx.yml"
+mkdir -p "$DATA_VOLUME_ROOT" "$CONFIG_DIR" "$TLS_DIR" "$AUTH_DIR"
+write_mount
+for file in kafka.keystore.p12 kafka.truststore.p12 keystore-password truststore-password key-password; do printf fixture > "$TLS_DIR/$file"; done
+for file in server-jaas.conf admin.properties; do printf fixture > "$AUTH_DIR/$file"; done
+printf fixture > "$JMX_AGENT_PATH"
+printf 'rules: []\n' > "$JMX_CONFIG_PATH"
+run_start
+[[ "$(grep -c '^listeners=' "$CONFIG_DIR/server.properties")" == 1 ]]
+grep -q '^listeners=INTERNAL://:9092,CONTROLLER://:9093,EXTERNAL://:9094$' "$CONFIG_DIR/server.properties"
+grep -q '^advertised.listeners=.*kafka.example.test:31092$' "$CONFIG_DIR/server.properties"
+grep -q '^authorizer.class.name=org.apache.kafka.metadata.authorizer.StandardAuthorizer$' "$CONFIG_DIR/server.properties"
+grep -q -- '-javaagent:.*=9404:' "$CONFIG_DIR/kafka-opts"
+echo "PASS: 13 startup scenarios including secure listeners/auth/metrics and storage refusal paths; mock Kafka only"

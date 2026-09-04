@@ -65,3 +65,19 @@ Bu denetim yeni `lab/kafka-apache` chart'ının bütün template/helper/values/s
 - [containerd configuration](https://github.com/containerd/containerd/blob/main/docs/cri/config.md): ignore_image_defined_volumes ve implicit writable mount davranışı.
 - [Kubernetes StatefulSet](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/): update/storage semantiği.
 - [Kubernetes disruption](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/): PDB'nin kapsamadığı silme/update yolları.
+
+## 2026-09-04 — 0.3.0 secure genişletme denetimi
+
+| Alan | Uygulanan sözleşme | Doğrulama durumu |
+| --- | --- | --- |
+| Geriye uyumluluk | Varsayılan values PLAINTEXT, iki ClusterIP Service ve mevcut PVC/identity korumalarını sürdürür | Offline render testi geçti |
+| TLS/SASL | INTERNAL ve EXTERNAL `SASL_SSL`; CONTROLLER SSL client-auth; PKCS12 ve JAAS dış Secret'lardan | Render + mock startup geçti; canlı değil |
+| ACL | KRaft `StandardAuthorizer`, default-deny, admin ve controller sertifika principal'ı superuser | Mock config geçti; canlı değil |
+| Dış erişim | Broker başına sabit NodePort; advertised DNS zorunlu; controller dışarı açılmaz; CIDR boş olamaz | Schema/render geçti; gerçek firewall/ağ testi yok |
+| JMX | Apache image digest'i üzerine resmi JMX Exporter 1.6.0 agent; release asset SHA256 sabit | Asset hash doğrulandı; Docker daemon kapalı olduğu için image build/push yok |
+| Prometheus | Metrics Service; ServiceMonitor/PrometheusRule yalnız seçenek ve CRD API birlikte varsa | Capability render testi geçti |
+| Provisioning | Post-install/upgrade hook Job; topic `--if-not-exists`, yalnız ekleyici ACL komutları | Render testi geçti; canlı idempotency yok |
+| RBAC | `kafka-secure` için namespace Role/RoleBinding; ClusterRole yok; pod token mount kapalı | YAML/test geçti; API auth testi yok |
+| Genişletme | `extraConfig` protected key/newline engeli; `extraDeploy` namespace-safe kind allowlist | Negatif render testleri geçti |
+
+Secure template sayısının artması işlev gruplarından kaynaklanır; legacy Bitnami chart'ın 35 YAML'ı birebir kopyalanmadı. HPA/VPA, ayrı broker/controller StatefulSet'leri, auto-discovery, cert-manager ve tam monitoring stack bilinçli biçimde kapsam dışıdır. 0.3.0 için canlı kabul yapılana kadar yalnız 0.2.0 PLAINTEXT profilinin gerçek Contabo başarısı geçerlidir.

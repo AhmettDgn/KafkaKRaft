@@ -2,13 +2,17 @@
 # Run --check as a normal user; --install requires root.
 set -Eeuo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+profile=lab
+if [[ "${1:-}" == --profile ]]; then profile="${2:-}"; shift 2; fi
 mode="${1:---check}"
-case "$mode" in --check|--install) ;; *) echo "Usage: bootstrap.sh --check|--install"; exit 1;; esac
+case "$profile" in lab|secure) ;; *) echo "Profile must be lab or secure"; exit 1;; esac
+case "$mode" in --check|--install) ;; *) echo "Usage: bootstrap.sh [--profile lab|secure] --check|--install"; exit 1;; esac
 bash "$root/scripts/contabo/preflight.sh"
 [[ "$mode" == --install ]] || exit 0
 [[ "$EUID" == 0 ]] || { echo "Use sudo for --install" >&2; exit 1; }
 [[ "${LAB_FIREWALL_CONFIRMED:-false}" == true ]] || {
   echo "First restrict public access to 6443/tcp,10250/tcp,8472/udp,9092-9093/tcp in the Contabo firewall."
+  [[ "$profile" != secure ]] || echo "For secure external access, allow 31092-31094/tcp only from the intended client CIDRs."
   echo "Then run with LAB_FIREWALL_CONFIRMED=true. This script never disables your firewall."
   exit 1
 }
@@ -19,7 +23,7 @@ DEPLOY_USER="${DEPLOY_USER:-${SUDO_USER:-kafka-deploy}}"
   echo "DEPLOY_USER must be a non-root Linux username" >&2; exit 1;
 }
 apt-get update
-apt-get install -y --no-install-recommends ca-certificates curl git openssl python3 python3-yaml util-linux
+apt-get install -y --no-install-recommends ca-certificates curl git openssl python3 python3-yaml util-linux openjdk-21-jre-headless
 id "$DEPLOY_USER" >/dev/null 2>&1 || useradd --create-home --shell /bin/bash "$DEPLOY_USER"
 [[ "$(id -u "$DEPLOY_USER")" != 0 ]] || exit 1
 deploy_group="$(id -gn "$DEPLOY_USER")"
@@ -34,7 +38,10 @@ if [[ -n "$members" && "$members" != "$DEPLOY_USER" ]]; then
   echo "Deploy primary group has other members; review before granting credentials" >&2; exit 1
 fi
 install -d -m 0750 -o root -g "$deploy_group" /etc/kafka-kraft
-install -d -m 0750 -o "$DEPLOY_USER" -g "$deploy_group" /var/log/kafka-lab
+namespace=kafka-lab
+[[ "$profile" == secure ]] && namespace=kafka-secure
+install -d -m 0750 -o "$DEPLOY_USER" -g "$deploy_group" "/var/log/$namespace"
+[[ "$profile" != secure ]] || install -d -m 0750 -o root -g "$deploy_group" /etc/kafka-kraft/secure
 
 if command -v helm >/dev/null 2>&1; then
   [[ "$(helm version --template '{{.Version}}')" == "$HELM_VERSION" ]] || {
@@ -61,52 +68,63 @@ fi
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 kubectl wait --for=condition=Ready nodes --all --timeout=180s
 
-if kubectl get namespace kafka-lab >/dev/null 2>&1; then
-  owner="$(kubectl get namespace kafka-lab -o jsonpath='{.metadata.labels.app\.kubernetes\.io/managed-by}')"
-  [[ "$owner" == kafka-lab-bootstrap ]] || {
-    echo "Existing kafka-lab namespace is not managed by this installer" >&2; exit 1;
+if kubectl get namespace "$namespace" >/dev/null 2>&1; then
+  owner="$(kubectl get namespace "$namespace" -o jsonpath='{.metadata.labels.app\.kubernetes\.io/managed-by}')"
+  [[ "$owner" == "$namespace-bootstrap" ]] || {
+    echo "Existing $namespace namespace is not managed by this installer" >&2; exit 1;
   }
 fi
-kubectl apply -f "$root/deploy/contabo/lab-access.yaml"
-bash "$root/scripts/lab/create-cluster-id.sh"
+kubectl apply -f "$root/deploy/contabo/${profile}-access.yaml"
+NAMESPACE="$namespace" CLUSTER_ID_SECRET="${namespace}-cluster-id" bash "$root/scripts/lab/create-cluster-id.sh"
 # Long-lived SA token: restricted to the lab namespace, stored only on this host.
 for ((i=0; i<30; i++)); do
-  token="$(kubectl get secret kafka-lab-deployer-token -n kafka-lab -o jsonpath='{.data.token}')"
+  token="$(kubectl get secret "${namespace}-deployer-token" -n "$namespace" -o jsonpath='{.data.token}')"
   [[ -n "$token" ]] && break
   sleep 1
 done
 [[ -n "$token" ]] || { echo "Service account token was not issued" >&2; exit 1; }
 token="$(printf '%s' "$token" | base64 -d)"
-ca="$(kubectl get secret kafka-lab-deployer-token -n kafka-lab -o jsonpath='{.data.ca\.crt}')"
+ca="$(kubectl get secret "${namespace}-deployer-token" -n "$namespace" -o jsonpath='{.data.ca\.crt}')"
 [[ -n "$ca" ]] || exit 1
 umask 077
-cat > /etc/kafka-kraft/deployer.kubeconfig <<EOF
+kubeconfig=/etc/kafka-kraft/deployer.kubeconfig
+[[ "$profile" == secure ]] && kubeconfig=/etc/kafka-kraft/secure-deployer.kubeconfig
+cat > "$kubeconfig" <<EOF
 apiVersion: v1
 kind: Config
 clusters:
-- name: kafka-lab-local
+- name: ${namespace}-local
   cluster:
     server: https://127.0.0.1:6443
     certificate-authority-data: $ca
 users:
-- name: kafka-lab-deployer
+- name: ${namespace}-deployer
   user:
     token: $token
 contexts:
-- name: kafka-lab
+- name: ${namespace}
   context:
-    cluster: kafka-lab-local
-    user: kafka-lab-deployer
-    namespace: kafka-lab
-current-context: kafka-lab
+    cluster: ${namespace}-local
+    user: ${namespace}-deployer
+    namespace: ${namespace}
+current-context: ${namespace}
 EOF
 unset token ca
-chown root:"$deploy_group" /etc/kafka-kraft/deployer.kubeconfig
-chmod 0640 /etc/kafka-kraft/deployer.kubeconfig
-for name in deploy.env lab-values.yaml; do
-  [[ -e "/etc/kafka-kraft/$name" ]] || install -m 0640 -o root -g "$deploy_group" \
-    "$root/deploy/contabo/$name.example" "/etc/kafka-kraft/$name"
+chown root:"$deploy_group" "$kubeconfig"
+chmod 0640 "$kubeconfig"
+for name in "${profile}-deploy.env" "${profile}-values.yaml"; do
+  source_name="$name"
+  [[ "$profile" == lab && "$name" == lab-deploy.env ]] && source_name=deploy.env
+  target_name="$name"
+  [[ "$profile" == lab && "$name" == lab-deploy.env ]] && target_name=deploy.env
+  [[ -e "/etc/kafka-kraft/$target_name" ]] || install -m 0640 -o root -g "$deploy_group" \
+    "$root/deploy/contabo/$source_name.example" "/etc/kafka-kraft/$target_name"
 done
-echo "Ready for manual deployment as $DEPLOY_USER. Configuration and cluster identity preserved on rerun."
-echo "Run: bash scripts/contabo/deploy.sh --check"
-echo "Then: bash scripts/contabo/deploy.sh"
+echo "Ready for manual $profile deployment as $DEPLOY_USER. Configuration and cluster identity preserved on rerun."
+if [[ "$profile" == secure ]]; then
+  echo "Next create external Secrets: bash scripts/contabo/prepare-secure-secrets.sh <kafka-dns-name>"
+  echo "Then validate: bash scripts/contabo/deploy.sh --config /etc/kafka-kraft/secure-deploy.env --check"
+else
+  echo "Run: bash scripts/contabo/deploy.sh --check"
+  echo "Then: bash scripts/contabo/deploy.sh"
+fi
